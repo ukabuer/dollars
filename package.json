@@ -1,0 +1,29 @@
+{
+  "name": "dollars",
+  "version": "1.0.0",
+  "description": "chatroom",
+  "main": "index.js",
+  "author": "ukabuer <ukabuer@live.com>",
+  "license": "MIT",
+  "scripts": {
+    "dev": "webpack-dev-server --progress --colors --content-base public/",
+    "build": "webpack",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "koa": "^2.2.0",
+    "koa-static": "^3.0.0",
+    "socket.io": "^1.7.3",
+    "vue": "^2.2.6"
+  },
+  "devDependencies": {
+    "babel-core": "^6.24.1",
+    "babel-loader": "^6.4.1",
+    "babel-preset-es2015": "^6.24.1",
+    "css-loader": "^0.28.0",
+    "vue-loader": "^11.3.4",
+    "vue-template-compiler": "^2.2.6",
+    "webpack": "^2.4.1",
+    "webpack-dev-server": "^2.4.2"
+  }
+}
