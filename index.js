@@ -13,34 +13,41 @@ let channels = {
         name: 'default',
         users: [],
         messages: [],
+    },
+    'tech': {
+        name: 'tech',
+        users: [],
+        messages: [],
     }
 }
 
 io.on('connection', function (socket) {
-
-    socket.on('connect', (user) => {
+    socket.on('initial', (user) => {
         let initialData = {}
         for (channel in channels) {
-            if (channel == 'defualt')
-                initialData[channel] = channels.channel
-            esle
+            if (channel == 'default')
+                initialData[channel] = channels[channel]
+            else
                 initialData[channel] = new Channel(channel)
         }
         channels['default'].users.push(user)
-        socket.emit('connect', initialData)
+        socket.join('default')
+        socket.emit('initial', initialData)
+        io.in(channel).emit('join', channels[channel])
     })
 
     socket.on('message', (msg) => {
         let channel = msg.channel
         msg.time = Date.now()
-        this.channels[channel].messages.push(msg)
-        io.emit('message', msg)
+        channels[channel].messages.push(msg)
+        io.in(channel).emit('message', msg)
     })
 
     socket.on('join', (data) => {
         let channel = data.channel
         channels[channel].users.push(data.user)
-        io.emit('join', this.channels[channel])
+        socket.join(channel)
+        io.in(channel).emit('join', channels[channel])
     })
 })
 

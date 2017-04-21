@@ -1,8 +1,8 @@
 module.exports = Channel
 
-function Channel(name, users, messages, secret) {
+function Channel(name, secret, users, messages) {
     this.name = name
     this.users = users || []
-    this.messges = messages || []
+    this.messages = messages || []
     this.secret = secret || ''
 }
