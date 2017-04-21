@@ -3,23 +3,27 @@
         <div class="sidebar">
             <h2>Channels</h2>
             <ul class="channels">
-                <li v-for="channel in channels" @click="join(channel.name)">
-                    #{{ channel.name }}
+                <li v-for="channel in channels" @click="changeTarget('channels', channel.name)" :class="channel.joined ? 'joined' : ''">
+                    #{{ channel.name }} {{ channel.newMsg > 0 ? channel.newMsg : ''}}
                 </li>
             </ul>
-            <div class="users">
-                <ul></ul>
-            </div>
+            <h2>Online</h2>
+            <ul class="users">
+                <li v-for="user in users" @click="changeTarget('users', user.name)">
+                    {{ user.name }}
+                </li>
+            </ul>
         </div>
 
         <div class="chat">
             <div class="main">
+                <h1>{{ target }}</h1>
                 <div class="messages" id="messages">
-                    <div v-for="msg in channels[this.current].messages" :class="msg.user == user ? 'self' : ''">
-                        <div class="avatar"></div>
-                        <div class="content">
+                    <div v-for="msg in this[type][target].messages" :class="msg.user == user ? 'self' : ''">
+                        <div v-if="!msg.system" class="avatar"></div>
+                        <div :class="'content' + (msg.system ? ' system' : '')">
                             <div class="meta">
-                                <span>{{ msg.user }}</span>
+                                <span v-if="!msg.system">{{ msg.user }}</span>
                                 <span class="time">{{ new Date(msg.time).toLocaleTimeString() }}</span>
                             </div>
                             <p>{{ msg.content }}</p>
@@ -46,68 +50,132 @@
                         users: [],
                         messages: [],
                         joined: false,
-                        newMsg: false
+                        newMsg: 0
                     }
                 },
+                users: {},
                 input: '',
-                current: 'default',
-                user: 'test'
+                target: 'default',
+                type: 'channels',
+                user: ''
             }
         },
 
         methods: {
             send() {
+                if (this.input == '')
+                    return
                 socket.emit('message', {
-                    user: this.user,
                     content: this.input,
-                    channel: this.current
+                    type: this.type,
+                    target: this.target
                 })
                 this.input = ''
             },
 
-            join(channel) {
-                this.current = channel
-                socket.emit('join', {
-                    user: this.user,
-                    channel: channel
-                })
+            changeTarget(type, target) {
+                this.type = type
+                this.target = target
+                if (type == 'channels' && this[type][target].joined != true) {
+                    socket.emit('join', target)
+                } else {
+                    this[type][target].newMsg = 0
+                    this.$nextTick(()=>{
+                        $('#messages').scrollTop($('#messages')[0].scrollHeight)
+                    })
+                }
             }
         },
 
         created() {
             let user = window.prompt('用户名')
-            if (user == '') {
-                console.log('用户名需要0 0')
+            if (!user || user == '') {
+                alert('用户名 需要！')
                 return
             }
             this.user = user
-            socket.emit('initial', user)
-            socket.on('initial', (channels) => {
+
+            socket.emit('login', user)
+            socket.on('login', (channels) => {
+                channels['default'].joined = true
+                channels['default'].newMsg = 0
                 this.channels = channels
-                this.channels['default'].joined = true
                 this.$nextTick(()=>{
                     $('#messages').scrollTop($('#messages')[0].scrollHeight)
+                })
+
+                channels['default'].users.forEach(user => {
+                    user.newMsg = 0
+                    user.messages = []
+                    this.$set(this.users, user.name, user)
                 })
             })
 
             socket.on('message', (msg) => {
-                let channel = msg.channel
-                this.channels[channel].messages.push(msg)
-                if (this.current !== channel) {
-                    this.channels[channel].newMsg = true
+                let target = msg.target
+                let type = msg.type
+                if (type == 'users') {
+                    let t = msg.user == this.user ? msg.target : this.user
+                    this[type][t].messages.push(msg)
+                } else
+                    this[type][target].messages.push(msg)
+
+                if (this.target !== target) {
+                    let tmp = Object.assign({}, this[type][target])
+                    tmp.newMsg++
+                    this.$set(this[type], target, tmp)
                 }
                 this.$nextTick(()=>{
                     $('#messages').scrollTop($('#messages')[0].scrollHeight)
                 })
             })
 
-            socket.on('join', (channel) => {
-                this.$set(this.channels, channel.name, channel)
+            socket.on('join', (data) => {
+                if (data.messages === undefined) {
+                    let tmp = this.channels[data.channel]
+                    tmp.users.push(data.user)
+                    tmp.messages.push({
+                        channel: data.channel,
+                        system: true,
+                        time: Date.now(),
+                        content: data.user.name+'进入了本频道'
+                    })
+                    this.$set(this.channels, data.channel, tmp)
+
+                    data.user.messages = []
+                    data.user.newMsg = 0
+                    this.users[data.user.name] = data.user
+                } else {
+                    data.joined = true
+                    data.newMsg = 0
+                    this.$set(this.channels, data.name, data)
+                }
                 this.$nextTick(()=>{
                     $('#messages').scrollTop($('#messages')[0].scrollHeight)
                 })
             })
 
+            socket.on('exit', (data) => {
+                let channel = data.channel
+                let tmp = this.channels[channel]
+                let i = tmp.users.indexOf(data.user)
+                tmp.users.splice(i, 1)
+                delete this.users[data.user.name]
+                tmp.messages.push({
+                    channel: data.channel,
+                    system: true,
+                    time: Date.now(),
+                    content: data.user.name+'离开了本频道'
+                })
+                this.$set(this.channels, channel, tmp)
+                this.$nextTick(()=>{
+                    $('#messages').scrollTop($('#messages')[0].scrollHeight)
+                })
+            })
+
+            window.onbeforeunload = () => {
+                socket.emit('exit')
+            }
         }
     }
 
@@ -174,18 +242,37 @@
         padding: 10px 25px;
         background-color: yellowgreen;
         border: 2px solid #fff;
-        border-radius: 20px;
+        border-radius: 10px;
         font-size: 16px;
     }
 
-
+    .content.system {
+        height: 20px;
+        line-height: 20px;
+        text-align: center;
+    }
+    .content.system .meta {
+        display: inline;
+    }
+    .content.system p {
+        display: inline;
+        padding: 0;
+        border: none;
+        font-size: 12px;
+        color: #ddd;
+        background-color: initial;
+    }
 
     .main {
         position: absolute;
-        padding-top: 70px;
+        padding-top: 110px;
         width: 100%;
         height: 100%;
-        bottom: 50px;
+        bottom: 100px;
+    }
+
+    .main h1 {
+        margin: 0;
     }
 
     .messages {
