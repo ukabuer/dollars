@@ -2,15 +2,17 @@
     <div class="container">
         <div class="sidebar">
             <h2>Channels</h2>
-            <ul class="channels">
+            <ul class="channels target">
                 <li v-for="channel in channels" @click="changeTarget('channels', channel.name)" :class="channel.joined ? 'joined' : ''">
-                    #{{ channel.name }} {{ channel.newMsg > 0 ? channel.newMsg : ''}}
+                    #{{ channel.name }} 
+                    <span v-if="channel.newMsg > 0">{{ channel.newMsg > 99 ? 99 : channel.newMsg }}</span>
                 </li>
             </ul>
             <h2>Online</h2>
-            <ul class="users">
+            <ul class="users target">
                 <li v-for="user in users" @click="changeTarget('users', user.name)">
                     {{ user.name }}
+                    <span v-if="user.newMsg > 0">{{ user.newMsg > 99 ? 99 : user.newMsg}}</span>
                 </li>
             </ul>
         </div>
@@ -19,11 +21,11 @@
             <div class="main">
                 <h1>{{ target }}</h1>
                 <div class="messages" id="messages">
-                    <div v-for="msg in this[type][target].messages" :class="msg.user == user ? 'self' : ''">
+                    <div v-for="msg in this[type][target].messages" :class="msg.from == user ? 'self' : ''">
                         <div v-if="!msg.system" class="avatar"></div>
                         <div :class="'content' + (msg.system ? ' system' : '')">
                             <div class="meta">
-                                <span v-if="!msg.system">{{ msg.user }}</span>
+                                <span v-if="!msg.system">{{ msg.from }}</span>
                                 <span class="time">{{ new Date(msg.time).toLocaleTimeString() }}</span>
                             </div>
                             <p>{{ msg.content }}</p>
@@ -105,9 +107,10 @@
                 })
 
                 channels['default'].users.forEach(user => {
-                    user.newMsg = 0
-                    user.messages = []
-                    this.$set(this.users, user.name, user)
+                    let tmp = Object.assign({}, user)
+                    tmp.newMsg = 0
+                    tmp.messages = []
+                    this.$set(this.users, user.name, tmp)
                 })
             })
 
@@ -115,12 +118,12 @@
                 let target = msg.target
                 let type = msg.type
                 if (type == 'users') {
-                    let t = msg.user == this.user ? msg.target : this.user
-                    this[type][t].messages.push(msg)
-                } else
-                    this[type][target].messages.push(msg)
+                    target = (target == this.user) ? msg.from : target
+                }
+                
+                this[type][target].messages.push(msg)
 
-                if (this.target !== target) {
+                if (this.target !== msg.target) {
                     let tmp = Object.assign({}, this[type][target])
                     tmp.newMsg++
                     this.$set(this[type], target, tmp)
@@ -142,9 +145,10 @@
                     })
                     this.$set(this.channels, data.channel, tmp)
 
-                    data.user.messages = []
-                    data.user.newMsg = 0
-                    this.users[data.user.name] = data.user
+                    tmp = Object.assign({}, data.user)
+                    tmp.messages = []
+                    tmp.newMsg = 0
+                    this.$set(this.users, tmp.name, tmp)
                 } else {
                     data.joined = true
                     data.newMsg = 0
@@ -204,13 +208,32 @@
         width: 200px;
         height: 100%;
     }
-    
-    .channels li {
-        margin: 10px;
+
+    .channels {
+        color: #bbb;
     }
 
-    .channels li:hover {
+    .channels .joined {
+        color: #fff;
+    }
+
+    .target li {
+        margin: 10px;
+        line-height: 20px;
+    }
+
+    .target li:hover {
         cursor: pointer;
+    }
+
+    .target li span {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border-radius: 100%;
+        font-size: 12px;
+        text-align: center;
+        background-color: orangered;
     }
 
     .chat {

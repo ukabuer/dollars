@@ -45,7 +45,7 @@ io.on('connection', function (socket) {
     socket.on('message', (msg) => {
         let target = msg.target
         msg.time = Date.now()
-        msg.user = socket.username
+        msg.from = socket.username
         if (msg.type == 'users') {
             if (msg.user > target) {
                 users[msg.user][target].messages.push(msg)
@@ -105,13 +105,13 @@ io.on('connection', function (socket) {
             for (key in users) {
                 _user = users[key]
                 let res =  ( _user.name == user.nme ) ? 0 : ( (     _user.name > user.name ) ? 1 : -1 )
-                if (res == 1)
+                if (res == 1) {
                     users[_user.name][user.name] = {
                         name: user.name,
                         id: user.id,
                         messages: []
                     }
-                else if (res == -1) {
+                } else if (res == -1) {
                     users[user.name][_user.name] = {
                         name: _user.name,
                         id: _user.id,
