@@ -4,7 +4,7 @@ MAINTAINER ukabuer <ukabuer@live.com>
 
 COPY . /dollars/
 WORKDIR /dollars
-RUN npm install && npm run build
+RUN npm install && npm run build-unix
 
 EXPOSE 3000
 
