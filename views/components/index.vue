@@ -49,6 +49,10 @@
 
             <div class="main">
                 <h1>{{ target }}</h1>
+                <div class="control" v-if="at == 'channels'">
+                    <span>频道成员</span>
+                    <span v-if="target != 'default'" @click="leave">离开频道</span>
+                </div>
                 <div class="messages" id="messages">
                     <div v-for="msg in this[at][target].messages" :class="msg.from == username ? 'self' : ''">
                         <div v-if="!msg.system" class="avatar"></div>
@@ -155,7 +159,7 @@
                 })
 
                 window.onbeforeunload = () => {
-                    socket.emit('exit')
+                    socket.emit('logout')
                 }
             },
 
@@ -217,7 +221,6 @@
                 this.at = at
                 this.target = target
                 if (at == 'channels' && this[at][target].joined != true) {
-                    console.log(11)
                     socket.emit('join', target)
                 } else {
                     this[at][target].newMsg = 0
@@ -225,14 +228,32 @@
                 }
             },
 
+            leave() {
+                let channel = Object.assign({}, this.channels[this.target])
+                channel.joined = false
+                this.$set(this.channels, this.target, channel)
+                socket.emit('leave', this.target)
+
+                this.changeTarget('channels', 'default')
+            },
+
             getChannelUsers() {
                 socket.emit('channelUsers', this.target)
             },
 
             updateUser(username, online) {
-                let tmp = Object.assign({}, this.users[username])
-                tmp.online = online
-                this.$set(this.users, username, tmp)
+                let user = this.users[username]
+                if (undefined == user) {
+                    user = {
+                        name: username,
+                        online: true,
+                        messages: []
+                    }
+                } else {
+                    user = Object.assign({}, user)
+                    user.online = online
+                }
+                this.$set(this.users, username, user)
             },
 
             joinChannel(channel) {
@@ -262,6 +283,10 @@
             socket.on('login failed', (info) => {
                 this.attention = info
             })
+
+            window.onbeforeunload = () => {
+                socket.disconnect()
+            }
         }
     }
 
@@ -384,8 +409,18 @@
         height: 100%;
         left: 200px;
         right: 0px;
-        padding: 10 0px;
         overflow: hidden;
+    }
+
+    .chat .control {
+        position: absolute;
+        top: 120px;
+        right: 50px;
+    }
+
+    .chat .control span {
+        margin-right: 10px;
+        cursor: pointer;
     }
     
     .time {
@@ -394,7 +429,9 @@
     }
     
     .avatar {
+        position: relative;
         float: left;
+        top: 5px;
         width: 50px;
         height: 50px;
         border: 2px solid #fff;
@@ -449,11 +486,13 @@
     
     .messages {
         height: 100%;
+        padding-top: 10px;
+        border-top: 1px solid #333;
         overflow-y: scroll;
     }
     
     .messages>div {
-        margin-bottom: 20px;
+        margin-bottom: 10px;
     }
     
     .messages .self .avatar {

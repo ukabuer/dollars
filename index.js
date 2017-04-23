@@ -12,6 +12,7 @@ const Message = require('./models/message')
 const User = require('./models/user')
 const Tunnel = require('./models/tunnel')
 
+/* TODO using consitent data */
 /* tmp data */
 let users = new Map()
 config.users.forEach((user) => {
@@ -62,7 +63,7 @@ io.on('connection', function (socket) {
             return
         }
 
-        let user
+        let user = null
         if (!config.public) {
             user = users.get(auth.username)
             if (undefined === user) {
@@ -107,13 +108,16 @@ io.on('connection', function (socket) {
     })
 
     socket.on('leave', (channel) => {
-        let user = user.get(socket.username)
+        if (channel == 'default') {
+            return
+        }
+        let user = users.get(socket.username)
         let index = user.joined.indexOf(channel)
         user.joined.splice(index, 1)
         channels.get(channel).removeUser(user.name, socket, io)
     })
 
-    socket.on('exit', () => {
+    socket.on('logout', () => {
         if (!socket.username) {
             return 
         }
@@ -126,7 +130,7 @@ io.on('connection', function (socket) {
                 channels.get(channel).removeUser(user.name, socket, io)
             })
         }
-        io.emit('exit', user.name)
+        io.to('default').emit('logout', user.name)
     })
 
     socket.on('channelUsers', channel => {
@@ -168,7 +172,7 @@ io.on('connection', function (socket) {
             }
         })
         socket.emit('login succeed', chatroom)
-        socket.broadcast.emit('login', user.name)
+        socket.to('default').emit('login', user.name)
     }
 })
 
