@@ -96,7 +96,8 @@
                 passwordAgain: null,
                 attention: null,
                 loginMode: true,
-                login: false
+                login: false,
+                hasInit: false
             }
         },
 
@@ -108,8 +109,8 @@
                 }
 
                 if (!this.loginMode) {
-                    if (this.username.length < 4) {
-                        this.attention = '用户名太短啦，要大于4个字符'
+                    if (this.username.length < 2) {
+                        this.attention = '用户名太短啦，要大于2个字符'
                         return
                     }
                     if (this.password.length < 6) {
@@ -138,6 +139,10 @@
                 this.password = this.passwordAgain = null
                 this.login = true
 
+                if (this.hasInit) {
+                    return
+                }
+                this.hasInit = true
                 socket.on('message', (message) => {
                     this.recieve(message)
                 })
@@ -154,12 +159,20 @@
                     this.joinChannel(channel)
                 })
 
+                socket.on('exit', (info) => {
+                    this.login = false
+                    this.attention = info
+                    socket.disconnect()
+                    socket.open()
+                })
+
                 socket.on('channelUsers', (channelUsers) => {
                     this.channelUsers = channelUsers
                 })
 
-                window.onbeforeunload = () => {
+                window.onunload = window.onpagehide = window.onbeforeunload = () => {
                     socket.emit('logout')
+                    socket.disconnect()
                 }
             },
 
@@ -203,6 +216,7 @@
                 if (at == 'users' && target == this.username) {
                     target = message.from
                 }
+                console.log(message)
 
                 this[at][target].messages.push(message)
 

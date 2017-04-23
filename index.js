@@ -39,7 +39,7 @@ io.on('connection', function (socket) {
             socket.emit('signup failed', '需要用户信息')
             return 
         }
-        if (auth.username.length < 4 || auth.password.length < 6) {
+        if (auth.username.length < 2 || auth.password.length < 6) {
             socket.emit('signup failed', '用户名或者密码太短')
             return
         }
@@ -78,8 +78,7 @@ io.on('connection', function (socket) {
         }
 
         if (user.socket != null) {
-            socket.emit('login failed', '该用户已登陆')
-            return
+            socket.to(user.socket).emit('exit', '本账号在另一处登录了')
         }
         connect(user, socket)
     })
@@ -122,7 +121,7 @@ io.on('connection', function (socket) {
             return 
         }
         let user = users.get(socket.username)
-        socket.disconnect()
+        socket.disconnect(true)
 
         user.socket = null
         if (config.public) {
