@@ -216,7 +216,6 @@
                 if (at == 'users' && target == this.username) {
                     target = message.from
                 }
-                console.log(message)
 
                 this[at][target].messages.push(message)
 
