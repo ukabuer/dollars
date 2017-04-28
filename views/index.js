@@ -1,6 +1,6 @@
 import Vue from 'vue'
 
-import index from './components/index.vue'
+import index from './index.vue'
 
 const app = new Vue({
     el: '#app',

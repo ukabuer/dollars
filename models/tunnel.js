@@ -2,9 +2,11 @@ const fs = require('fs')
 
 module.exports = Tunnel
 
-function Tunnel(large, small, newestFile, lastFile, messages) {
-    this.newestFile = newestFile || ''
+function Tunnel(begin, end, lastFile, messages) {
+    this.begin = begin
+    this.end = end
     this.lastFile = lastFile || ''
+    
     this.messages = messages || []
     this.newMsgs = messages ? messages.length : 0
 }
@@ -25,18 +27,29 @@ Tunnel.prototype.addMessage = function(message, socket, target) {
     }
 }
 
-Tunnel.prototype.writeToFile = function() {
+Tunnel.prototype.writeToFile = function(sync = false) {
     let filename = `${Date.now()}.json`
     var data = {
-        lastFile: this.newestFile,
+        lastFile: this.lastFile,
         messages: this.messages
     }
 
-    fs.writeFile(`./data/users/${this.large}/${this.small}/${filename}`, JSON.stringify(data), (err) => {
-        if (err) {
-            console.log(err)
-        }
-    })
-    this.lastFile = newestFile
-    this.newestFile = filename
+    if (sync) {
+        data.messages = data.messages.slice(-this.newMsgs)
+        fs.writeFileSync(`./data/users/${this.begin}/${this.end}/${filename}`, data)
+        fs.writeFileSync(`./data/users/${this.begin}/${this.end}/tunnel.json`, filename)
+    } else {
+        fs.writeFile(`./data/users/${this.begin}/${this.end}/${filename}`, JSON.stringify(data), (err) => {
+            if (err) {
+                console.log(err)
+            }
+        })
+        fs.writeFile(`./data/users/${this.begin}/${this.end}/tunnel.json`, filename, (err) => {
+            if (err) {
+                console.log(err)
+            }
+        })
+    }
+
+    this.lastFile = filename
 }

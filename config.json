@@ -1,23 +1,5 @@
 {
     "public": false,
     "port": 3000,
-    "channels": [
-        {
-            "name": "default",
-            "system": true,
-            "owner": null
-        },
-        {
-            "name": "tech",
-            "system": false,
-            "owner": "ukabuer"
-        }
-    ],
-    "users": [
-        {
-            "name": "ukabuer",
-            "password": "ukabuer",
-            "joined": ["default"]
-        }
-    ]
+    "crossOrigin": true
 }

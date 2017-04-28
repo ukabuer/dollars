@@ -3,14 +3,14 @@ const Message = require('./message')
 
 module.exports = Channel
 
-function Channel(name, owners, public, usernames, newestFile, lastFile, messages) {
+function Channel(name, owners, public, usernames, lastFile, messages) {
     this.name = name
     this.owners = owners || []
     this.public = public || true
-    this.newestFile = newestFile || ''
     this.usernames = usernames || []
-    this.messages = messages || []
     this.lastFile = lastFile || ''
+    
+    this.messages = messages || []
     this.newMsgs = messages ? messages.length : 0
 }
 
@@ -65,10 +65,11 @@ Channel.prototype.getUserList = function(socket) {
 Channel.prototype.writeToFile = function(sync = false) {
     let filename = `${Date.now()}.json`
     var data = {
-        lastFile: this.newestFile,
+        lastFile: this.lastFile,
         messages: this.messages
     }
     if (sync) {
+        data.messages = data.messages.slice(-this.newMsgs)
         fs.writeFileSync(`./data/channels/${this.name}/${filename}`, JSON.stringify(data))
     } else {
         fs.writeFile(`./data/channels/${this.name}/${filename}`, JSON.stringify(data), (err) => {
@@ -77,6 +78,5 @@ Channel.prototype.writeToFile = function(sync = false) {
             }
         })
     }
-    this.lastFile = this.newestFile
-    this.newestFile = filename
+    this.lastFile = filename
 }

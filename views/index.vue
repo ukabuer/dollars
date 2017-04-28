@@ -1,32 +1,8 @@
 <template>
     <div class="container">
-
-        <div class="welcome" v-if="!login">
-            <h1>{{ loginMode ? '登录' : '注册' }}</h1>
-            <form @submit.prevent="submitAuth">
-                <div>
-                    <span>用户名</span>
-                    <input type="text" v-model="username">
-                </div>
-
-                <div>
-                    <span>密码</span>
-                    <input type="password" v-model="password">
-                </div>
-                
-                <div v-if="!loginMode">
-                    <span>重复密码</span>
-                    <input type="password" v-model="passwordAgain">
-                </div>
-                
-                <p class="attention" v-if="attention != null">{{ attention }}</p>
-                <button type="submit">提交</button>
-                <div class="switch" @click="switchAuthMode">{{ loginMode ? '注册' : '登录' }}</div>
-            </form>
-        </div>
+        <welcome class="welcome" v-if="!login" :attention="attention"></welcome>
 
         <div class="sidebar" v-if="login">
-
             <h2>Channels</h2>
             <ul class="channels target">
                 <li v-for="channel in channels" @click="changeTarget('channels', channel.name)" :class="channel.joined ? 'joined' : ''">
@@ -42,11 +18,9 @@
                     <span v-if="user.newMsg > 0">{{ user.newMsg > 99 ? 99 : user.newMsg}}</span>
                 </li>
             </ul>
-
         </div>
 
         <div class="chat" v-if="login">
-
             <div class="main">
                 <h1>{{ target }}</h1>
                 <div class="control" v-if="at == 'channels'">
@@ -59,7 +33,7 @@
                         <div :class="'content' + (msg.system ? ' system' : '')">
                             <div class="meta">
                                 <span v-if="!msg.system">{{ msg.from }}</span>
-                                <span class="time">{{ new Date(msg.time).toLocaleTimeString() }}</span>
+                                <span class="time">{{ displayTime() }}</span>
                             </div>
                             <p :style="msg.system ? '' :'background-color:'+msg.color">{{ msg.content }}</p>
                         </div>
@@ -71,13 +45,18 @@
                 <input v-model="input" autocomplete="off" />
                 <button>Post!</button>
             </form>
-
         </div>
     </div>
 </template>
 
 <script>
+    import Welcome from './components/welcome.vue'
+
     export default {
+        components: {
+            Welcome        
+        },
+        
         data() {
             return {
                 channels: {
@@ -92,49 +71,13 @@
                 target: 'default',
                 at: 'channels',
                 username: null,
-                password: null,
-                passwordAgain: null,
                 attention: null,
-                loginMode: true,
                 login: false,
                 hasInit: false
             }
         },
 
         methods: {
-            submitAuth() {
-                if (!this.username || !this.password) {
-                    this.attention = '用户信息需要'
-                    return
-                }
-
-                if (!this.loginMode) {
-                    if (this.username.length < 2) {
-                        this.attention = '用户名太短啦，要大于2个字符'
-                        return
-                    }
-                    if (this.password.length < 6) {
-                        this.attention = '密码太短啦，要大于6个字符'
-                        return
-                    }
-                    if (this.password != this.passwordAgain) {
-                        this.attention = '两次密码不一样啊'
-                        return
-                    }
-                }
-
-                let event = this.loginMode ? 'login' : 'signup'
-                socket.emit(event, {
-                    username: this.username,
-                    password: this.password
-                })
-            },
-
-            switchAuthMode() {
-                this.attention = this.username = this.password = this.passwordAgain = null
-                this.loginMode = !this.loginMode
-            },
-
             init(socket) {
                 this.password = this.passwordAgain = null
                 this.login = true
@@ -179,29 +122,34 @@
             loadChatroom(data) {
                 let channels = data.joined
                 data.channelList.forEach((channel) => {
-                    if (channels[channel] === undefined) {
+                    if (undefined == channels[channel]) {
                         channels[channel] = {
                             name: channel,
                             messages: [],
                             joined: false
                         }
+                    } else {
+                        let newMsg = 0
+                        channels[channel].messages.forEach((message) => {
+                            if (message.time > data.lastLogoutTime) {
+                                newMsg++
+                            }
+                        })
+                        channels[channel].newMsg = newMsg
                     }
                 })
 
                 this.channels = channels
                 this.users = data.users
-
+                for (let user in data.offlineMsgs) {
+                    this.users[user].newMsg = data.offlineMsgs[user]
+                }
                 this.scrollTobottom()
             },
 
             send() {
                 if (this.input == '')
                     return
-                /* TODO */
-                if (this.at == 'users' && !this.users[this.target].online) {
-                    alert('对方已下线，还不支持离线消息')
-                    return 
-                }
 
                 socket.emit('message', {
                     content: this.input,
@@ -267,6 +215,16 @@
                     user.online = online
                 }
                 this.$set(this.users, username, user)
+                if (online == false && this.target == username) {
+                    this.recieve({
+                        content: username + '下线了',
+                        from: 'system',
+                        to: this.user,
+                        at: 'users',
+                        time: Date.now(),
+                        system: true
+                    })
+                }
             },
 
             joinChannel(channel) {
@@ -281,6 +239,23 @@
                     messageBox.scrollTop = messageBox.scrollHeight
                 })
             },
+
+            displayTime(time) {
+                let date = new Date(time)
+                let today = new Date()
+                let basic = date.getHours() + ':' + date.getMinutes() + ':' + date.getSeconds()
+                
+                if (today.getDate() == date.getDate()) {
+                    return basic
+                }
+
+                basic = (date.getMonth()+1) + '/' + date.getDate() + ' ' + basic
+                if (today.getFullYear() == date.getFullYear()) {
+                    return basic
+                }
+
+                return date.getFullYear() + '/' + basic
+            }
         },
 
         created() {

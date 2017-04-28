@@ -48,7 +48,7 @@ chatroom.channels.forEach((channel) => {
         }
     }
 
-    channels.set(channel.name, new Channel(channel.name, channel.owners, channel.public, channel.usernames, channel.newestFile, lastFile, messages))
+    channels.set(channel.name, new Channel(channel.name, channel.owners, channel.public, channel.usernames, lastFile, messages))
 })
 
 let tunnels = new Map()
@@ -57,6 +57,7 @@ users.forEach((user) => {
 })
 
 let colors = ['cornflowerblue', 'tan', 'brown', 'firebrick', 'sienna', 'deepskyblue', 'cadetblue', 'blueviolet', 'hotpink', 'darkcyan', 'darkorange']
+/* end */
 
 
 io.on('connection', function (socket) {
@@ -78,10 +79,13 @@ io.on('connection', function (socket) {
         let user = new User(auth.username, auth.password)
         user.joined.push('default')
         users.set(user.name, user)
+        user.writeToFile(users)
+
         tunnels.set(user.name, new Map())
 
         connect(user, socket)
         channels.get('default').addUser(user.name, socket, io)
+        console.log(3)
     })
 
     socket.on('login', (auth) => {
@@ -103,7 +107,6 @@ io.on('connection', function (socket) {
         } else {
             user = new User(auth.username, auth.password)
         }
-
         if (user.socket != null) {
             socket.to(user.socket).emit('exit', '本账号在另一处登录了')
         }
@@ -116,16 +119,12 @@ io.on('connection', function (socket) {
         socket.username = user.name
 
         /* send user the chatroom info */
-        let offlineMsgs = {}
-        try {
-            offlineMsgs = require(`./data/users/${user.name}/offline.json`)
-        } catch (e) { }
-
         let chatroom = {
             channelList: [],
             joined: {},
             users: {},
-            offlineMsgs,
+            offlineMsgs: user.offlineMsgs,
+            lastLogoutTime: user.lastLogoutTime
         }
         channels.forEach((channel, name) => {
             chatroom.channelList.push(name)
@@ -159,14 +158,38 @@ io.on('connection', function (socket) {
                 /* TODO make sure user is in the channel */
                 channels.get(msg.to).addMessage(msg, socket, io)
             } else if (msg.at == 'users') {
-                let high, low
-                [high, low] = msg.from > msg.to ? [msg.from, msg.to] : [msg.to, msg.from]
-                if (high == low) return
-                let tmp = tunnels.get(high)
-                if (undefined == tmp.get(low))
-                    tmp.set(low, new Tunnel())
-                let socketId = users.get(msg.to).socket
-                tmp.get(low).addMessage(msg, socket, socketId)
+                let begin, end
+                [begin, end] = msg.from > msg.to ? [msg.from, msg.to] : [msg.to, msg.from]
+                if (begin == end) {
+                    return
+                }
+
+                let tunnel = tunnels.get(begin)
+                if (undefined == tunnel) {
+                    return 
+                }
+
+                if (undefined == tunnel.get(end)) {
+                    let messages = [], lastFile = null
+                    try {
+                        let newestFilename = require(`./data/users/${high}/${low}/tunnel.json`)
+                        let msgFile = require(`./data/users/${high}/${low}/${newestFilename}`)
+                        messages = msgFile.messages
+                        lastFile = msgFile.lastFile
+                    } catch (e) { }
+                    tunnel.set(end, new Tunnel(begin, end, lastFile, newestFile))
+                }
+                tunnel.get(end).addMessage(msg, socket, target.socket)
+
+                let target = users.get(msg.to)
+                if (null == target.socket) {
+                    let offMsgs = target.offlineMsgs.get(target.from)
+                    if (undefined == offMsgs) {
+                        target.offlineMsgs.set(target.from, 0)
+                    } else {
+                        target.offlineMsgs.set(target.from, offMsgs + 1)
+                    }
+                }                
             }
         })
 
@@ -194,6 +217,7 @@ io.on('connection', function (socket) {
             socket.disconnect(true)
 
             user.socket = null
+            user.lastLogoutTime = Date.now()
             if (config.public) {
                 user.channels.forEach(channel => {
                     channels.get(channel).removeUser(user.name, socket, io)
@@ -207,7 +231,7 @@ io.on('connection', function (socket) {
         })
 
         socket.on('upload avatar', (data) => {
-            fs.writeFile(`avatar_${socket.username}`, data, () => {
+            fs.writeFile(`./data/images/avatar/${socket.username}`, data, () => {
 
             })
         })
@@ -224,24 +248,23 @@ process.on('exit', function() {
     let channelsData = [], usersData = []
     channels.forEach((channel) => {
         channel.writeToFile(true)
-        channelsData.push({
-            name: channel.name,
-            owners: channel.owners,
-            usernames: channel.usernames,
-            public: channel.public,
-            newestFile: channel.newestFile
-        })
+        channel.newestFile = channel.lastFile
+        delete channel.messages
+        delete channel.lastFile
+        delete channel.newMsgs
+        channelsData.push(channel)
     })
     users.forEach((user) => {
-        usersData.push({
-            name: user.name,
-            password: user.password,
-            joined: user.joined,
-            lastLogoutTime: Date.now()
+        delete user.socket
+        usersData.push(user)
+    })
+    tunnels.forEach((middle) => {
+        middle.forEach((tunnel) => {
+            tunnel.writeTOFile(true)
         })
     })
-    fs.writeFileSync('./data/channels.json', JSON.stringify(channelsData))
 
+    fs.writeFileSync('./data/channels.json', JSON.stringify(channelsData))
     fs.writeFileSync('./data/users.json', JSON.stringify(usersData))
 
     process.exit();
