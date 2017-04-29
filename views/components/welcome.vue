@@ -45,6 +45,10 @@
                 }
 
                 if (!this.loginMode) {
+                    if (/[~`!#$%\^&*+=\-\[\]\\';,/{}|\\":<>\?]/g.test(this.username)) {
+                        this.attention = '用户名不要有特殊字符可以吗'
+                        return
+                    }
                     if (this.username.length < 2) {
                         this.attention = '用户名太短啦，要大于2个字符'
                         return
@@ -64,7 +68,6 @@
                     username: this.username,
                     password: this.password
                 })
-                console.log(1)
             },
 
             switchAuthMode() {
@@ -74,3 +77,46 @@
         }
     }
 </script>
+
+<style>
+    .welcome {
+        position: absolute;
+        top: 30%;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .welcome form > div {
+        width: 300px;
+        margin-bottom: 10px;
+    }
+
+    .welcome span {
+        display: inline-block;
+        width: 80px;
+    }
+
+    .welcome input {
+        padding: 5px 10px;
+    }
+
+    .welcome button, .welcome .switch {
+        padding: 8px 15px;
+        margin-right: 30px;
+        margin-top: 10px;
+        border: none;
+        background-color: firebrick;
+        color: #fff;
+        font-size: 16px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .welcome .switch {
+        display: inline;
+    }
+
+    .welcome .attention {
+        color: red;
+    }
+</style>

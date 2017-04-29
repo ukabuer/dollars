@@ -9,14 +9,14 @@ function Channel(name, owners, public, usernames, lastFile, messages) {
     this.public = public || true
     this.usernames = usernames || []
     this.lastFile = lastFile || ''
-    
+
     this.messages = messages || []
     this.newMsgs = messages ? messages.length : 0
 }
 
 Channel.prototype.addUser = function(username, socket, sockets) {
     socket.join(this.name)
-    this.userList.push(username)
+    this.usernames.push(username)
 
     /* emit basic channel info to the user */
     let usersInfo = []
@@ -33,8 +33,8 @@ Channel.prototype.addUser = function(username, socket, sockets) {
 
 Channel.prototype.removeUser = function(username, socket, sockets) {
     socket.leave(this.name)
-    let index = this.userList.indexOf(username)
-    this.userList.splice(index, 1)
+    let index = this.usernames.indexOf(username)
+    this.usernames.splice(index, 1)
 
     /* notificate other users in channel */
     let msg = new Message(`${username}离开了频道`, 'system', this.name, 'channels')

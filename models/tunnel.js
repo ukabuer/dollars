@@ -13,7 +13,9 @@ function Tunnel(begin, end, lastFile, messages) {
 
 Tunnel.prototype.addMessage = function(message, socket, target) {
     this.messages.push(message)
-    socket.to(target).emit('message', message)
+    if (null != target) {
+        socket.to(target).emit('message', message)
+    }
     socket.emit('message', message)
 
     this.newMsgs++

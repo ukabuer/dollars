@@ -8,7 +8,9 @@ function User(name, password, joined, lastLogoutTime) {
     this.joined = joined || []
     this.lastLogoutTime = lastLogoutTime || null
     this.socket = null
-    this.offlineMsgs = new Map()
+    this.offlineMsgs = {}
+
+    this.admin = false
 }
 
 User.prototype.writeToFile = (users) => {

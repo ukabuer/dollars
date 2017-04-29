@@ -1,9 +1,10 @@
 <template>
     <div class="container">
-        <welcome class="welcome" v-if="!login" :attention="attention"></welcome>
+        <welcome class="welcome" v-if="!login" :attention="attention" v-model="username"></welcome>
 
         <div class="sidebar" v-if="login">
             <h2>Channels</h2>
+            <span v-if="true === admin" @click="addChannel" class="add">+</span>
             <ul class="channels target">
                 <li v-for="channel in channels" @click="changeTarget('channels', channel.name)" :class="channel.joined ? 'joined' : ''">
                     #{{ channel.name }}
@@ -24,7 +25,7 @@
             <div class="main">
                 <h1>{{ target }}</h1>
                 <div class="control" v-if="at == 'channels'">
-                    <span>频道成员</span>
+                    <span @click="alert('comming soon')">频道成员</span>
                     <span v-if="target != 'default'" @click="leave">离开频道</span>
                 </div>
                 <div class="messages" id="messages">
@@ -33,7 +34,7 @@
                         <div :class="'content' + (msg.system ? ' system' : '')">
                             <div class="meta">
                                 <span v-if="!msg.system">{{ msg.from }}</span>
-                                <span class="time">{{ displayTime() }}</span>
+                                <span class="time">{{ displayTime(msg.time) }}</span>
                             </div>
                             <p :style="msg.system ? '' :'background-color:'+msg.color">{{ msg.content }}</p>
                         </div>
@@ -41,36 +42,29 @@
                 </div>
             </div>
 
-            <form @submit.prevent="send">
-                <input v-model="input" autocomplete="off" />
-                <button>Post!</button>
-            </form>
+            <input-bar :target="target" :at="at"></input-bar>
         </div>
     </div>
 </template>
 
 <script>
     import Welcome from './components/welcome.vue'
-
+    import inputBar from './components/input-bar.vue'
+    
     export default {
         components: {
-            Welcome        
+            Welcome, inputBar       
         },
         
         data() {
             return {
-                channels: {
-                    default: {
-                        name: 'default',
-                        messages: []
-                    }
-                },
+                channels: {},
                 channelUsers: [],
                 users: {},
-                input: '',
                 target: 'default',
                 at: 'channels',
                 username: null,
+                admin: false,
                 attention: null,
                 login: false,
                 hasInit: false
@@ -113,6 +107,14 @@
                     this.channelUsers = channelUsers
                 })
 
+                socket.on('addChannel', (channel) => {
+                    this.$set(this.channels, channel, {
+                        name: channel,
+                        messages: [],
+                        joined: false
+                    })
+                })
+
                 window.onunload = window.onpagehide = window.onbeforeunload = () => {
                     socket.emit('logout')
                     socket.disconnect()
@@ -120,6 +122,8 @@
             },
 
             loadChatroom(data) {
+                this.username = data.username
+                this.admin = data.admin
                 let channels = data.joined
                 data.channelList.forEach((channel) => {
                     if (undefined == channels[channel]) {
@@ -130,11 +134,13 @@
                         }
                     } else {
                         let newMsg = 0
-                        channels[channel].messages.forEach((message) => {
-                            if (message.time > data.lastLogoutTime) {
-                                newMsg++
-                            }
-                        })
+                        if (null != data.lastLogoutTime) {
+                            channels[channel].messages.forEach((message) => {
+                                if (message.time > data.lastLogoutTime) {
+                                    newMsg++
+                                }
+                            })
+                        }
                         channels[channel].newMsg = newMsg
                     }
                 })
@@ -145,18 +151,6 @@
                     this.users[user].newMsg = data.offlineMsgs[user]
                 }
                 this.scrollTobottom()
-            },
-
-            send() {
-                if (this.input == '')
-                    return
-
-                socket.emit('message', {
-                    content: this.input,
-                    to: this.target,
-                    at: this.at
-                })
-                this.input = ''
             },
 
             recieve(message) {
@@ -218,8 +212,8 @@
                 if (online == false && this.target == username) {
                     this.recieve({
                         content: username + '下线了',
-                        from: 'system',
-                        to: this.user,
+                        from: username,
+                        to: this.username,
                         at: 'users',
                         time: Date.now(),
                         system: true
@@ -231,6 +225,11 @@
                 channel.joined = true
                 channel.newMsg = 0
                 this.$set(this.channels, channel.name, channel)
+            },
+
+            addChannel() {
+               let channel = window.prompt('name')
+               socket.emit('addChannel', channel)
             },
 
             scrollTobottom() {
@@ -277,7 +276,6 @@
             }
         }
     }
-
 </script>
 
 <style>
@@ -297,53 +295,20 @@
         background-color: #0a0a0a;
         color: #fff;
     }
-    
-    .welcome {
-        position: absolute;
-        top: 30%;
-        left: 50%;
-        transform: translateX(-50%);
-    }
-
-    .welcome form > div {
-        width: 300px;
-        margin-bottom: 10px;
-    }
-
-    .welcome span {
-        display: inline-block;
-        width: 80px;
-    }
-
-    .welcome input {
-        padding: 5px 10px;
-    }
-
-    .welcome button, .welcome .switch {
-        padding: 8px 15px;
-        margin-right: 30px;
-        margin-top: 10px;
-        border: none;
-        background-color: firebrick;
-        color: #fff;
-        font-size: 16px;
-        border-radius: 5px;
-        cursor: pointer;
-    }
-
-    .welcome .switch {
-        display: inline;
-    }
-
-    .welcome .attention {
-        color: red;
-    }
 
     .sidebar {
         position: absolute;
         width: 200px;
         height: 100%;
         padding-left: 20px;
+    }
+
+    .sidebar .add {
+        position: absolute;
+        right: 20px;
+        top: 20px;
+        font-size: 24px;
+        cursor: pointer;
     }
     
     .channels {
@@ -489,27 +454,5 @@
     
     .messages .self .content {
         text-align: right;
-    }
-    
-    .chat form {
-        position: absolute;
-        bottom: 0;
-        height: 40px;
-        width: 100%;
-    }
-    
-    .chat form input {
-        height: 100%;
-        border: 0;
-        padding: 10px;
-        width: 90%;
-    }
-    
-    .chat form button {
-        height: 100%;
-        width: 9%;
-        background: rgb(130, 224, 255);
-        border: none;
-        padding: 5px;
-    }
+    }    
 </style>

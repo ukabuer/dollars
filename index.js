@@ -19,20 +19,31 @@ let chatroom = {
 }
 
 try {
+    if (!fs.existsSync('./data')) {
+        fs.mkdirSync('./data')
+    }
     chatroom.users = require('./data/users.json')
     chatroom.channels = require('./data/channels.json')
-} catch (e) {
-    console.log(e)
-}
+} catch (e) { }
 
 let users = new Map()
 chatroom.users.forEach((user) => {
-    users.set(user.name, new User(user.name, user.password, user.joined, user.lastLogoutTime))
+    let newUser = new User(user.name, user.password, user.joined, user.lastLogoutTime)
+    if (config.admin.indexOf(newUser.name) != -1) {
+        newUser.admin = true
+    }
+    users.set(user.name, newUser)
 })
 
 let channels = new Map()
+if (!fs.existsSync('./data/channels')) {
+    fs.mkdirSync('./data/channels')
+}
 chatroom.channels.forEach((channel) => {
     let messages = [], newMsgs, lastFile
+    if (!fs.existsSync(`./data/channels/${channel.name}`)) {
+        fs.mkdirSync(`./data/channels/${channel.name}`)
+    }
     if (channel.newestFile) {
         try {
             let msgFile = require(`./data/channels/${channel.name}/${channel.newestFile}`)
@@ -67,6 +78,10 @@ io.on('connection', function (socket) {
             socket.emit('signup failed', '需要用户信息')
             return
         }
+        if (/[~`!#$%\^&*+=\-\[\]\\';,/{}|\\":<>\?]/g.test(auth.username)) {
+            socket.emit('signup failed', '用户名包含特殊字符')
+            return
+        }
         if (auth.username.length < 2 || auth.password.length < 6) {
             socket.emit('signup failed', '用户名或者密码太短')
             return
@@ -77,15 +92,21 @@ io.on('connection', function (socket) {
         }
 
         let user = new User(auth.username, auth.password)
+        if (config.admin.indexOf(user.name) != -1) {
+            user.admin = true
+        }
         user.joined.push('default')
         users.set(user.name, user)
         user.writeToFile(users)
+        if (!fs.exists(`./data/users`), (err) => {}) {
+            fs.mkdir(`./data/users`, (err) => {})
+        }
+        fs.mkdir(`./data/users/${user.name}`, (err) => {})
 
         tunnels.set(user.name, new Map())
 
         connect(user, socket)
         channels.get('default').addUser(user.name, socket, io)
-        console.log(3)
     })
 
     socket.on('login', (auth) => {
@@ -120,6 +141,8 @@ io.on('connection', function (socket) {
 
         /* send user the chatroom info */
         let chatroom = {
+            username: user.name,
+            admin: user.admin,
             channelList: [],
             joined: {},
             users: {},
@@ -155,7 +178,9 @@ io.on('connection', function (socket) {
         socket.on('message', (data) => {
             let msg = new Message(data.content, socket.username, data.to, data.at, socket.color)
             if (msg.at == 'channels') {
-                /* TODO make sure user is in the channel */
+                if (users.get(socket.username).joined.indexOf(msg.to) == -1) {
+                    return
+                }
                 channels.get(msg.to).addMessage(msg, socket, io)
             } else if (msg.at == 'users') {
                 let begin, end
@@ -166,30 +191,35 @@ io.on('connection', function (socket) {
 
                 let tunnel = tunnels.get(begin)
                 if (undefined == tunnel) {
-                    return 
+                    return
                 }
 
                 if (undefined == tunnel.get(end)) {
                     let messages = [], lastFile = null
                     try {
-                        let newestFilename = require(`./data/users/${high}/${low}/tunnel.json`)
-                        let msgFile = require(`./data/users/${high}/${low}/${newestFilename}`)
+                        if (!fs.existsSync(`./data/users/${begin}/${end}`)) {
+                            fs.mkdirSync(`./data/users/${begin}/${end}`)
+                        }
+                        let newestFilename = require(`./data/users/${begin}/${end}/tunnel.json`)
+                        let msgFile = require(`./data/users/${begin}/${end}/${newestFilename}`)
                         messages = msgFile.messages
                         lastFile = msgFile.lastFile
                     } catch (e) { }
-                    tunnel.set(end, new Tunnel(begin, end, lastFile, newestFile))
+
+                    tunnel.set(end, new Tunnel(begin, end, lastFile, messages))
                 }
-                tunnel.get(end).addMessage(msg, socket, target.socket)
 
                 let target = users.get(msg.to)
+                tunnel.get(end).addMessage(msg, socket, target.socket)
+
                 if (null == target.socket) {
-                    let offMsgs = target.offlineMsgs.get(target.from)
+                    let offMsgs = target.offlineMsgs[msg.from]
                     if (undefined == offMsgs) {
-                        target.offlineMsgs.set(target.from, 0)
+                        target.offlineMsgs[msg.from] = 1
                     } else {
-                        target.offlineMsgs.set(target.from, offMsgs + 1)
+                        target.offlineMsgs[msg.from] = offMsgs + 1
                     }
-                }                
+                }
             }
         })
 
@@ -226,8 +256,16 @@ io.on('connection', function (socket) {
             io.to('default').emit('logout', user.name)
         })
 
-        socket.on('channelUsers', channel => {
+        socket.on('channelUsers', (channel) => {
             channels.get(channel).getUserList(socket)
+        })
+
+        socket.on('addChannel', (channel) => {
+            if (undefined == channels.get(channel)) {
+                channels.set(channel, new Channel(channel, [], true, [], null, []))
+                io.in('default').emit('addChannel', channel)
+                fs.mkdir(`./data/channels/${channel}`, (err) => {})
+            }
         })
 
         socket.on('upload avatar', (data) => {
@@ -244,7 +282,7 @@ process.on('SIGINT', () => {
     process.exit()
 })
 
-process.on('exit', function() {
+process.on('exit', function () {
     let channelsData = [], usersData = []
     channels.forEach((channel) => {
         channel.writeToFile(true)
@@ -260,7 +298,7 @@ process.on('exit', function() {
     })
     tunnels.forEach((middle) => {
         middle.forEach((tunnel) => {
-            tunnel.writeTOFile(true)
+            tunnel.writeToFile(true)
         })
     })
 
