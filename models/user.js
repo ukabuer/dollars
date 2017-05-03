@@ -1,32 +1,39 @@
 const fs = require('fs')
 
-module.exports = User
+class User {
+    constructor(name, password, joined = [], lastLogoutTime = null) {
+        this.name = name
+        this.password = password
+        this.joined = joined
+        this.lastLogoutTime = lastLogoutTime
 
-function User(name, password, joined, lastLogoutTime) {
-    this.name = name
-    this.password = password
-    this.joined = joined || []
-    this.lastLogoutTime = lastLogoutTime || null
-    this.socket = null
-    this.offlineMsgs = {}
+        this.socket = null
+        this.offlineMsgs = {}
+        this.admin = false
+    }
 
-    this.admin = false
-}
+    static writeToFile(users) {
+        let data = []
+        users.forEach((user) => {
+            data.push({
+                name: user.name,
+                password: user.password,
+                joined: user.joined,
+                lastLogoutTime: user.lastLogoutTime,
+            })
+        });
 
-User.prototype.writeToFile = (users) => {
-    let data = []
-    users.forEach((user) => {
-        data.push({
-            name: user.name,
-            password: user.password,
-            joined: user.joined
+        fs.writeFile(`./data/users.json`, JSON.stringify(data), (err) => {
+            if (err) {
+                console.log(err)
+            }
         })
-    });
+    }
 
-    fs.writeFile(`./data/users.json`, JSON.stringify(data), (err) => {
-        if (err) {
-            console.log(err)
-        }
-    })
-
+    static from(user) {
+        let tmp = new User()
+        return Object.assign(tmp, user)
+    }
 }
+
+module.exports = User

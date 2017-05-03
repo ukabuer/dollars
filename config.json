@@ -1,6 +1,5 @@
 {
     "public": false,
     "port": 3000,
-    "crossOrigin": true,
-    "admin": ["ukabuer"]
+    "admins": ["ukabuer"]
 }

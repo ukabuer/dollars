@@ -14,55 +14,55 @@ const Tunnel = require('./models/tunnel')
 
 /* load data */
 let chatroom = {
+    public: config.public,
     users: [],
-    channels: [new Channel('default')]
+    channels: [new Channel('default')],
 }
+if (!chatroom.public) chatroom.allowUsers = config.admins
+let users = new Map()
+let channels = new Map()
+let tunnels = new Map()
 
 try {
     if (!fs.existsSync('./data')) {
         fs.mkdirSync('./data')
     }
+    if (!fs.existsSync(`./data/users`)) {
+        fs.mkdirSync(`./data/users`)
+    }
+    if (!fs.existsSync(`./data/channels`)) {
+        fs.mkdirSync(`./data/channels`)
+    }
     chatroom.users = require('./data/users.json')
     chatroom.channels = require('./data/channels.json')
 } catch (e) { }
 
-let users = new Map()
 chatroom.users.forEach((user) => {
-    let newUser = new User(user.name, user.password, user.joined, user.lastLogoutTime)
-    if (config.admin.indexOf(newUser.name) != -1) {
+    let newUser = User.from(user)
+    if (config.admins.indexOf(newUser.name) != -1) {
         newUser.admin = true
     }
     users.set(user.name, newUser)
 })
 
-let channels = new Map()
-if (!fs.existsSync('./data/channels')) {
-    fs.mkdirSync('./data/channels')
-}
 chatroom.channels.forEach((channel) => {
     let messages = [], newMsgs, lastFile
     if (!fs.existsSync(`./data/channels/${channel.name}`)) {
         fs.mkdirSync(`./data/channels/${channel.name}`)
     }
-    if (channel.newestFile) {
+    if (channel.tmpFile) {
         try {
-            let msgFile = require(`./data/channels/${channel.name}/${channel.newestFile}`)
-            fs.unlink(`./data/channels/${channel.name}/${channel.newestFile}`, (err) => {
-                if (err) {
-                    console.log(err)
-                }
-            })
+            let msgFile = require(`./data/channels/${channel.name}/${channel.tmpFile}`)
+            fs.unlink(`./data/channels/${channel.name}/${channel.tmpFile}`, (err) => {})
             messages = msgFile.messages
             lastFile = msgFile.lastFile
         } catch (e) {
             console.log(e)
         }
     }
-
-    channels.set(channel.name, new Channel(channel.name, channel.owners, channel.public, channel.usernames, lastFile, messages))
+    channels.set(channel.name, Channel.from(channel, lastFile, messages))
 })
 
-let tunnels = new Map()
 users.forEach((user) => {
     tunnels.set(user.name, new Map())
 })
@@ -87,20 +87,21 @@ io.on('connection', function (socket) {
             return
         }
         if (users.has(auth.username)) {
-            socket.emit('signup failed', '用户名已经存在')
+            socket.emit('signup failed', '用户已经存在')
+            return
+        }
+        if (!chatroom.public && (chatroom.allowUsers.indexOf(auth.username) == -1)) {
+            socket.emit('signup failed', '此用户名还未拥有注册的权利')
             return
         }
 
         let user = new User(auth.username, auth.password)
-        if (config.admin.indexOf(user.name) != -1) {
+        if (config.admins.indexOf(user.name) != -1) {
             user.admin = true
         }
         user.joined.push('default')
         users.set(user.name, user)
-        user.writeToFile(users)
-        if (!fs.exists(`./data/users`), (err) => {}) {
-            fs.mkdir(`./data/users`, (err) => {})
-        }
+        User.writeToFile(users)
         fs.mkdir(`./data/users/${user.name}`, (err) => {})
 
         tunnels.set(user.name, new Map())
@@ -116,18 +117,15 @@ io.on('connection', function (socket) {
         }
 
         let user = null
-        if (!config.public) {
-            user = users.get(auth.username)
-            if (undefined === user) {
-                socket.emit('login failed', `${auth.username}？不存在的`)
-                return
-            } else if (auth.password != user.password) {
-                socket.emit('login failed', '密码错误')
-                return
-            }
-        } else {
-            user = new User(auth.username, auth.password)
+        user = users.get(auth.username)
+        if (undefined === user) {
+            socket.emit('login failed', `${auth.username}？不存在的`)
+            return
+        } else if (auth.password != user.password) {
+            socket.emit('login failed', '密码错误')
+            return
         }
+
         if (user.socket != null) {
             socket.to(user.socket).emit('exit', '本账号在另一处登录了')
         }
@@ -200,8 +198,8 @@ io.on('connection', function (socket) {
                         if (!fs.existsSync(`./data/users/${begin}/${end}`)) {
                             fs.mkdirSync(`./data/users/${begin}/${end}`)
                         }
-                        let newestFilename = require(`./data/users/${begin}/${end}/tunnel.json`)
-                        let msgFile = require(`./data/users/${begin}/${end}/${newestFilename}`)
+                        let tmpFilename = require(`./data/users/${begin}/${end}/tunnel.json`)
+                        let msgFile = require(`./data/users/${begin}/${end}/${tmpFilename}`)
                         messages = msgFile.messages
                         lastFile = msgFile.lastFile
                     } catch (e) { }
@@ -248,11 +246,6 @@ io.on('connection', function (socket) {
 
             user.socket = null
             user.lastLogoutTime = Date.now()
-            if (config.public) {
-                user.channels.forEach(channel => {
-                    channels.get(channel).removeUser(user.name, socket, io)
-                })
-            }
             io.to('default').emit('logout', user.name)
         })
 
@@ -268,6 +261,31 @@ io.on('connection', function (socket) {
             }
         })
 
+        socket.on('allowUser', (username) => {
+            if (users.get(socket.username).admin) {
+                chatroom.allowUsers.push(username)
+            }
+        })
+
+        socket.on('forbidGuests', (username) => {
+            if (users.get(socket.username).admin) {
+                chatroom.public = false
+                chatroom.allowUsers = []
+            }
+        })
+
+        socket.on('allowGuests', (username) => {
+            if (users.get(socket.username).admin) {
+                chatroom.public = true
+            }
+        })
+
+        socket.on('backup', (username) => {
+            if (users.get(socket.username).admin) {
+                backup()
+            }
+        })
+
         socket.on('upload avatar', (data) => {
             fs.writeFile(`./data/images/avatar/${socket.username}`, data, () => {
 
@@ -276,34 +294,31 @@ io.on('connection', function (socket) {
     }
 })
 
-server.listen(config.port)
-
-process.on('SIGINT', () => {
-    process.exit()
-})
-
-process.on('exit', function () {
+function backup() {
     let channelsData = [], usersData = []
     channels.forEach((channel) => {
-        channel.writeToFile(true)
-        channel.newestFile = channel.lastFile
+        fs.unlink(`./data/channels/${channel.name}/${channel.tmpFile}`, (err) => {})
+        channel = Object.assign({}, channel)
+        channel.writeToFile()
+        channel.tmpFile = channel.lastFile
         delete channel.messages
         delete channel.lastFile
         delete channel.newMsgs
         channelsData.push(channel)
     })
     users.forEach((user) => {
+        user = Object.assign({}, user)
         delete user.socket
         usersData.push(user)
     })
     tunnels.forEach((middle) => {
         middle.forEach((tunnel) => {
-            tunnel.writeToFile(true)
+            tunnel.writeToFile()
         })
     })
 
-    fs.writeFileSync('./data/channels.json', JSON.stringify(channelsData))
-    fs.writeFileSync('./data/users.json', JSON.stringify(usersData))
+    fs.writeFile('./data/channels.json', JSON.stringify(channelsData), () => {})
+    fs.writeFile('./data/users.json', JSON.stringify(usersData), () => {})
+}
 
-    process.exit();
-});
+server.listen(config.port)
