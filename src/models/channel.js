@@ -1,6 +1,8 @@
 const fs = require('fs')
 const Message = require('./message')
 
+const MAXMSG = 100
+
 class Channel {
     constructor(name, owners, _public, usernames, lastFile, messages) {
         this.name = name
@@ -45,14 +47,14 @@ class Channel {
         /* push message to all users in channel */
         this.messages.push(message)
         sockets.in(this.name).emit('message', message)
-        
+
         this.newMsgs++
-        if (this.newMsgs >= 100) {
+        if (this.newMsgs >= MAXMSG) {
             this.writeToFile()
             this.newMsgs = 0
         }
 
-        if (this.messages.length >= 100) {
+        if (this.messages.length >= MAXMSG) {
             this.messages.shift()
         }
     }
@@ -61,29 +63,32 @@ class Channel {
         socket.emit('channelUsers', this.usernames)
     }
 
-    writeToFile(sync = false) {
-        let filename = `${Date.now()}.json`
-        var data = {
+    writeToFile() {
+        let data = {
             lastFile: this.lastFile,
             messages: this.messages
         }
-        if (sync) {
+        let filename = ''
+
+        if (this.newMsgs < MAXMSG) {
+            filename = 'tmp.json' 
             data.messages = data.messages.slice(-this.newMsgs)
-            fs.writeFileSync(`./data/channels/${this.name}/${filename}`, JSON.stringify(data))
         } else {
-            fs.writeFile(`./data/channels/${this.name}/${filename}`, JSON.stringify(data), (err) => {
-                if (err) {
-                    console.log(err)
-                }
-            })
+            filename = `${Date.now()}.json`
+            this.lastFile = filename
         }
-        this.lastFile = filename
+
+        fs.writeFile(`./data/channels/${this.name}/${filename}`, JSON.stringify(data), (err) => {
+            if (err) {
+                console.log(err)
+            }
+        })
     }
 
     static from(channel, lastFile = null, messages = []) {
         let tmp = new Channel()
-        tmp.lastFile = lastFile
-        tmp.messages = messages
+        channel.lastFile = lastFile
+        channel.messages = messages
         return Object.assign(tmp, channel)
     }
 }

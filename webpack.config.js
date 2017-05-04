@@ -2,7 +2,7 @@ var path = require('path');
 var webpack = require('webpack');
 
 module.exports = {
-    entry: './views/index.js',
+    entry: './src/views/index.js',
     output: {
         path: __dirname + '/public/js',
         filename: 'bundle.js',

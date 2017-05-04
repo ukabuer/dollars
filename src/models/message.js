@@ -10,6 +10,13 @@ class Message {
         this.time = Date.now()
         this.system = false
     }
+
+    static from(message, username, color) {
+        let tmp = new Message()
+        tmp.from = username
+        tmp.color = color
+        return Object.assign(tmp, message)
+    }
 }
 
 module.exports = Message
