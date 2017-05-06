@@ -51,3 +51,10 @@ npm start
 ```
 
 Visit `http://localhost:3000` and you will see the welcome page
+
+## Todo
+[] Support Emoji
+[] Support uploading images
+[] Private channel
+[] Mobile device support
+[] PWA

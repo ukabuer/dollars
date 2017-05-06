@@ -5,4 +5,8 @@ function forbidGuest(username) {
     chatroom.allowUsers = []
 }
 
-module.exports = forbidGuest
+module.exports = {
+    name: 'forbidGuest',
+    type: 'admin',
+    fn: forbidGuest
+}

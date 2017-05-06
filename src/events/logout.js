@@ -4,11 +4,17 @@ function logout(data, socket, io) {
     if (!socket.username) return
 
     let user = chatroom.users.get(socket.username)
-    socket.disconnect(true)
-
+    if (!user) return 
+    
+    socket.emit('exit', '登出成功')
+    socket.disconnect(false)
     user.socket = null
     user.lastLogoutTime = Date.now()
-    io.to('default').emit('logout', user.name)
+    io.to(chatroom.default).emit('logout', user.name)
 }
 
-module.exports = logout
+module.exports = {
+    name: 'logout',
+    type: 'normal',
+    fn: logout
+}

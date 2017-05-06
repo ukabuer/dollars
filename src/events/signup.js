@@ -1,8 +1,6 @@
 const crypto = require('crypto')
-
 const User = require('../models/user')
 const chatroom = require('../chatroom')
-const login = require('./login')
 
 function signup(data, socket, io) {
     if (!data.username || !data.password) {
@@ -30,17 +28,20 @@ function signup(data, socket, io) {
     hash.update(data.password)
 
     let user = new User(data.username, hash.digest('hex'))
-    if (chatroom.admins.indexOf(user.name) != -1) socket.admin = user.admin = true
-    user.joined.push(chatroom.defaultChannel)
+    if (chatroom.admins.indexOf(user.name) != -1) user.admin = true
+    user.joined.push(chatroom.default)
 
     chatroom.users.set(user.name, user)
     chatroom.saveUsers()
     chatroom.tunnels.set(user.name, new Map())
-
-    login(data, socket, io)
-
-    chatroom.channels.get(chatroom.defaultChannel).addUser(user.name, socket, io)
+    chatroom.login(user, socket)
+    chatroom.channels.get(chatroom.default).addUser(user.name, socket, io)
+    
     return true
 }
 
-module.exports = signup
+module.exports = {
+    name: 'signup',
+    type: 'auth',
+    fn: signup
+}

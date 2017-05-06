@@ -4,4 +4,8 @@ function backup() {
     chatroom.backup()
 }
 
-module.exports = backup
+module.exports = {
+    name: 'backup',
+    type: 'admin',
+    fn: backup
+}

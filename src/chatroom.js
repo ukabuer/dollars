@@ -1,4 +1,5 @@
 const fs = require('fs')
+const jwt = require('jsonwebtoken')
 const User = require('./models/user')
 const Channel = require('./models/channel')
 const config = require('../config.json')
@@ -6,52 +7,57 @@ const config = require('../config.json')
 let chatroom = {
     port: config.port,
     public: config.public,
-    defaultChannel: config.defaultChannel,
+    secret: config.secret,
+    default: config.default,
     admins: config.admins,
     users: new Map(),
     channels: new Map(),
     tunnels: new Map(),
 
-    load,
+    login,
     saveUsers,
     backup
 }
 
-function load() {
-    let users = [], channels = [new Channel(chatroom.defaultChannel)]
+let users = [], channels = [new Channel(chatroom.default)]
 
-    try {
-        users = require('../data/users.json')
-        channels = require('../data/channels.json')
-    } catch (e) { }
+const colors = ['cornflowerblue', 'tan', 'brown', 'firebrick', 'sienna', 'deepskyblue', 'cadetblue', 'blueviolet', 'hotpink', 'darkcyan', 'darkorange']
 
-    if (!chatroom.public) chatroom.allowUsers = chatroom.admins
-    if (!fs.existsSync('./data')) fs.mkdirSync('./data')
-    if (!fs.existsSync(`./data/users`)) fs.mkdirSync(`./data/users`)
-    if (!fs.existsSync(`./data/channels`)) fs.mkdirSync(`./data/channels`)
+try {
+    users = require('../data/users.json')
+    channels = require('../data/channels.json')
+} catch (e) { }
 
-    users.forEach((user) => {
-        let newUser = User.from(user)
-        if (config.admins.indexOf(newUser.name) != -1) newUser.admin = true
-        chatroom.users.set(user.name, newUser)
-        chatroom.tunnels.set(user.name, new Map())
-    })
+if (!chatroom.public) chatroom.allowUsers = chatroom.admins
+if (!fs.existsSync('./data')) fs.mkdirSync('./data')
+if (!fs.existsSync(`./data/users`)) fs.mkdirSync(`./data/users`)
+if (!fs.existsSync(`./data/channels`)) fs.mkdirSync(`./data/channels`)
+if (!fs.existsSync(`./data/public`)) fs.mkdirSync(`./data/public`)
+if (!fs.existsSync(`./data/public/avatars`)) fs.mkdirSync(`./data/public/avatars`)
+if (!fs.existsSync(`./data/public/images`)) fs.mkdirSync(`./data/public/images`)
 
-    channels.forEach((channel) => {
-        let messages = [], lastFile = null
-        if (!fs.existsSync(`./data/channels/${channel.name}`)) {
-            fs.mkdirSync(`./data/channels/${channel.name}`)
-        }
-        if (fs.existsSync(`./data/channels/${channel.name}/tmp.json`)) {
-            try {
-                let tmp = require(`../data/channels/${channel.name}/tmp.json`)
-                messages = tmp.messages
-                lastFile = tmp.lastFile
-            } catch (e) { }
-        }
-        chatroom.channels.set(channel.name, Channel.from(channel, lastFile, messages))
-    })
-}
+users.forEach((user) => {
+    let newUser = User.from(user)
+    if (config.admins.indexOf(newUser.name) != -1) newUser.admin = true
+    chatroom.users.set(user.name, newUser)
+    chatroom.tunnels.set(user.name, new Map())
+})
+
+channels.forEach((channel) => {
+    let messages = [], lastFile = null
+    if (!fs.existsSync(`./data/channels/${channel.name}`)) {
+        fs.mkdirSync(`./data/channels/${channel.name}`)
+    }
+    if (fs.existsSync(`./data/channels/${channel.name}/tmp.json`)) {
+        try {
+            let tmp = require(`../data/channels/${channel.name}/tmp.json`)
+            messages = tmp.messages
+            lastFile = tmp.lastFile
+        } catch (e) { }
+    }
+    chatroom.channels.set(channel.name, Channel.from(channel, lastFile, messages))
+})
+
 
 function backup() {
     let channelsData = [], usersData = []
@@ -82,17 +88,63 @@ function backup() {
 function saveUsers() {
     let data = []
     chatroom.users.forEach((user) => {
-        data.push({
-            name: user.name,
-            password: user.password,
-            joined: user.joined,
-            lastLogoutTime: user.lastLogoutTime,
-        })
+        user = User.from(user)
+        delete user.socket
+        data.push(user)
     })
 
     fs.writeFile(`./data/users.json`, JSON.stringify(data), (err) => {
         if (err) console.log(err)
     })
+}
+
+function login(user, socket) {
+    if (user.admin) socket.admin = true
+    user.socket = socket.id
+    socket.color = colors[Math.floor(Math.random() * colors.length)]
+    socket.username = user.name
+
+    /* send user the chatroom info */
+    let token = jwt.sign({name: user.name}, chatroom.secret)
+    let data = {
+        user: {
+            name: user.name,
+            isAdmin: user.admin,
+            avatar: user.avatar
+        },
+        token: token,
+        channelList: [],
+        joined: {},
+        users: {},
+        offlineMsgs: user.offlineMsgs,
+        lastLogoutTime: user.lastLogoutTime
+    }
+    chatroom.channels.forEach((channel, name) => {
+        data.channelList.push(name)
+    })
+    user.joined.forEach((channel) => {
+        socket.join(channel)
+        data.joined[channel] = {
+            name: channel,
+            messages: chatroom.channels.get(channel).messages,
+            joined: true,
+        }
+    })
+
+    let username = socket.username
+    chatroom.users.forEach((user) => {
+        let begin, end
+        [begin, end] = username > user.name ? [username, user.name] : [user.name, username]
+        let tmp = chatroom.tunnels.get(begin).get(end)
+        data.users[user.name] = {
+            name: user.name,
+            online: user.socket != null,
+            messages: tmp == undefined ? [] : tmp.messages,
+            avatar: user.avatar
+        }
+    })
+    socket.emit('login succeed', data)
+    socket.to(chatroom.default).emit('login', user.name)
 }
 
 module.exports = chatroom

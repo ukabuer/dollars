@@ -1,6 +1,7 @@
 {
     "public": false,
     "port": 3000,
-    "defaultChannel": "default",
+    "secret": "dollars",
+    "default": "default",
     "admins": ["ukabuer"]
 }

@@ -1,16 +1,16 @@
-const events = {
-    normal: ['message', 'join', 'leave', 'logout', 'getUsers'],
-    admin: ['addChannel', 'allowGuest', 'forbidGuest', 'allowUser', 'backup'],
-    signup: require('./signup'),
-    login: require('./login')
-}
+const fs = require('fs')
 
-events.normal.forEach((event) => {
-    events[event] = require(`./${event}`)
+let events = {}
+
+let files = fs.readdirSync('./src/events').filter((filename) => {
+    return filename.substr(-3, 3) == '.js' && filename != 'events.js'
 })
 
-events.admin.forEach((event) => {
-    events[event] = require(`./${event}`)
+files.forEach((name) => {
+    let event = require(`./${name}`)
+    if (!events[event.type]) events[event.type] = []
+    events[event.type].push(event.name)
+    events[event.name] = event.fn
 })
 
 module.exports = events

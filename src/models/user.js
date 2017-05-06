@@ -10,6 +10,7 @@ class User {
         this.socket = null
         this.offlineMsgs = {}
         this.admin = false
+        this.avatar = null
     }
 
     static from(user) {

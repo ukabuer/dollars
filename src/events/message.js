@@ -5,21 +5,17 @@ const chatroom = require('../chatroom')
 function message(data, socket, io) {
     let msg = Message.from(data, socket.username, socket.color)
     if (msg.at == 'channels') {
-        if (chatroom.users.get(socket.username).joined.indexOf(msg.to) == -1) {
-            return
-        }
+        let user = chatroom.users.get(socket.username)
+        if (!user && user.joined.indexOf(msg.to) == -1) return
+        
         chatroom.channels.get(msg.to).addMessage(msg, socket, io)
     } else if (msg.at == 'users') {
         let begin, end
         [begin, end] = msg.from > msg.to ? [msg.from, msg.to] : [msg.to, msg.from]
-        if (begin == end) {
-            return
-        }
+        if (begin == end) return
 
         let tunnel = chatroom.tunnels.get(begin)
-        if (undefined == tunnel) {
-            return
-        }
+        if (undefined == tunnel) return
 
         if (undefined == tunnel.get(end)) {
             let messages = [], lastFile = null
@@ -49,4 +45,8 @@ function message(data, socket, io) {
     }
 }
 
-module.exports = message
+module.exports = {
+    name: 'message',
+    type: 'normal',
+    fn: message
+}

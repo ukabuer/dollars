@@ -35,7 +35,7 @@
             }
         },
 
-        props: ['attention'],
+        props: ['hasInit', 'attention'],
         
         methods: {
             submitAuth() {
@@ -64,9 +64,10 @@
                 }
 
                 let event = this.loginMode ? 'login' : 'signup'
+                if (!socket.id) socket.open()
                 socket.emit(event, {
                     username: this.username,
-                    password: this.password
+                    password: this.password,
                 })
             },
 
@@ -74,6 +75,18 @@
                 this.attention = this.username = this.password = this.passwordAgain = null
                 this.loginMode = !this.loginMode
             },
+        },
+
+        created() {
+            if (this.hasInit) return
+
+            socket.on('signup failed', (info) => {
+                this.attention = info
+            })
+
+            socket.on('login failed', (info) => {
+                this.attention = info
+            })
         }
     }
 </script>

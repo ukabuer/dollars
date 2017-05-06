@@ -4,4 +4,8 @@ function allowUser(username) {
     chatroom.allowUsers.push(username)
 }
 
-module.exports = allowUser
+module.exports = {
+    name: 'allowUser',
+    type: 'admin',
+    fn: allowUser
+}

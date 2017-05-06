@@ -4,4 +4,8 @@ function allowGuest(username) {
     chatroom.public = true
 }
 
-module.exports = allowGuest
+module.exports = {
+    name: 'allowGuest',
+    type: 'admin',
+    fn: allowGuest
+}

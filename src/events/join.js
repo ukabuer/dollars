@@ -1,9 +1,16 @@
 const chatroom = require('../chatroom')
 
-function join(channel, socket, io) {
+function join(channelName, socket, io) {
     let user = chatroom.users.get(socket.username)
+    let channel = chatroom.channels.get(channelName)
+    if (!user || !channel) return
+
     user.joined.push(channel)
-    chatroom.channels.get(channel).addUser(user.name, socket, io)
+    channel.addUser(user.name, socket, io)
 }
 
-module.exports = join
+module.exports = {
+    name: 'join',
+    type: 'normal',
+    fn: join
+}
