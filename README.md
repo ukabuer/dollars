@@ -38,19 +38,15 @@ Install all dependencies
 npm install
 ```
 
-Build target js file
+Run the application in dev mode with hot reload at `http://localhost:3000`
 ```
-npm run build-win
-or
-npm run build-unix
+npm run dev
 ```
 
-Run the server
+Build target files at `./public/`
 ```
-npm start
+npm run build
 ```
-
-Visit `http://localhost:3000` and you will see the welcome page
 
 ## Todo
 - [ ] Support emoji

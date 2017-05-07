@@ -10,6 +10,11 @@ const koaBody = require('koa-body')
 const koajwt = require('koa-jwt')
 const upload = require('./routes/upload')
 
+if (process.env.NODE_ENV == 'development') {
+    app.use(require('./dev').devMiddleware)
+    app.use(require('./dev').hotMiddleware)
+}
+
 app.use(serve('data/public'))
 app.use(serve('public'))
 app.use(koaBody({ multipart: true }))

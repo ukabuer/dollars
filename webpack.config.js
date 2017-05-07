@@ -59,4 +59,11 @@ if (process.env.NODE_ENV == 'production') {
             }
         })
     ])
+} else if (process.env.NODE_ENV == 'development') {
+    module.exports.entry = ['webpack-hot-middleware/client?path=/__webpack_hmr&timeout=20000', './src/views/index.js']
+    
+    module.exports.plugins = (module.exports.plugins || []).concat([
+        new webpack.HotModuleReplacementPlugin(),
+        new webpack.NoEmitOnErrorsPlugin(),
+    ])
 }
