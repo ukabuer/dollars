@@ -28,7 +28,7 @@ function signup(data, socket, io) {
     hash.update(data.password)
 
     let user = new User(data.username, hash.digest('hex'))
-    if (chatroom.admins.indexOf(user.name) != -1) user.admin = true
+    if (chatroom.admins.indexOf(user.name) != -1) user.isAdmin = true
     user.joined.push(chatroom.default)
 
     chatroom.users.set(user.name, user)

@@ -9,7 +9,7 @@ class User {
 
         this.socket = null
         this.offlineMsgs = {}
-        this.admin = false
+        this.isAdmin = false
         this.avatar = null
     }
 

@@ -11,7 +11,12 @@ function avatar(file, username, socket, io) {
     filename = username + Date.now() + file.name.substring(index)
     fs.renameSync(file.path, publicPath + 'avatars/' + filename)
     user.avatar = './avatars/'+filename
-    io.in(chatroom.default).emit('update', {username, avatar: './avatars/'+filename})
+    io.in(chatroom.default).emit('updateUser', {
+        name: user.name, 
+        isAdmin: user.isAdmin,
+        online: user.online,
+        avatar: './avatars/'+filename
+    })
     return true
 }
 

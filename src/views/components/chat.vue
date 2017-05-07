@@ -3,13 +3,13 @@
         <div class="chat">
             <h1>{{ target }}</h1>
             <div class="control" v-if="at == 'channels'">
-                <span @click="window.alert('comming soon')">频道成员</span>
+                <span @click="getChannelUsers">频道成员</span>
                 <span v-if="target != 'default'" @click="leave">离开频道</span>
             </div>
             <div class="messages" id="messages">
                 <div v-for="msg in messages" :class="msg.from == username ? 'self' :''">
                     <div v-if="!msg.system" class="avatar">
-                        <img v-if="users[msg.from].avatar" :src="users[msg.from].avatar" alt="">
+                        <img v-if="users[msg.from].avatar" :src="users[msg.from].avatar">
                     </div>
                     <div :class="'content' + (msg.system ? ' system' : '')">
                         <div class="meta">
@@ -22,23 +22,33 @@
             </div>
         </div>
 
-        <inputbar :target="target" :at="at"></inputbar>
+        <input-bar :target="target" :at="at"></input-bar>
     </div>
 </template>
 
 <script>
-    import inputbar from './input-bar.vue'
+    import {mapState, mapMutations, mapGetters} from 'vuex'
+    import inputBar from './input-bar.vue'
     
     export default {
         components: {
-            inputbar
+            inputBar
         },
 
-        props: ['at', 'target', 'messages', 'leave', 'username', 'users'],
+        computed: mapState({
+            ...mapGetters(['messages']),
+            at: state => state.at,
+            target: state => state.target,
+            users: state => state.users,
+            username: state => state.user.name,
+        }),
 
         methods: {
+            ...mapMutations(['changePanel']),
+
             getChannelUsers() {
-                socket.emit('channelUsers', this.target)
+                socket.emit('getUsers', this.target)
+                this.changePanel('channel')
             },
 
             displayTime(time) {
@@ -46,17 +56,30 @@
                 let today = new Date()
                 let basic = date.toTimeString().substr(0, 8)
                 
-                if (today.getDate() == date.getDate()) {
-                    return basic
-                }
+                if (today.getDate() == date.getDate()) return basic
 
                 basic = (date.getMonth()+1) + '/' + date.getDate() + ' ' + basic
-                if (today.getFullYear() == date.getFullYear()) {
-                    return basic
-                }
+                if (today.getFullYear() == date.getFullYear()) return basic
 
                 return date.getFullYear() + '/' + basic
+            },
+
+            scrollToBottom() {
+                this.$nextTick(() => {
+                    let messageBox = document.querySelector('#messages')
+                    messageBox.scrollTop = messageBox.scrollHeight
+                })
+            },
+        },
+
+        watch: {
+            messages() {
+                this.scrollToBottom()
             }
+        },
+
+        created() {
+            this.scrollToBottom()
         }
     }
 </script>
@@ -65,6 +88,7 @@
     .time {
         font-size: 12px;
         color: #ddd;
+        margin: 0 5px;
     }
     
     .avatar {

@@ -10,7 +10,12 @@ function logout(data, socket, io) {
     socket.disconnect(false)
     user.socket = null
     user.lastLogoutTime = Date.now()
-    io.to(chatroom.default).emit('logout', user.name)
+    io.to(chatroom.default).emit('updateUser', {
+        name: user.name, 
+        isAdmin: user.isAdmin,
+        online: user.socket != null,
+        avatar: user.avatar
+    })
 }
 
 module.exports = {

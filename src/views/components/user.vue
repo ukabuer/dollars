@@ -11,11 +11,13 @@
             <button @click="upload">上传</button>
             <p v-if="attention">{{ attention }}</p>
         </div>
-        <span class="close" @click="switchPanel('chat')">X</span>
+        <span class="close" @click="changePanel('chat')">X</span>
     </div>
 </template>
 
 <script>
+    import {mapState, mapMutations} from 'vuex'
+
     export default {
         data() {
             return {
@@ -25,9 +27,13 @@
             }
         },
 
-        props: ['user', 'switchPanel'],
+        computed: mapState({
+            user: state => state.user,
+        }),
 
         methods: {
+            ...mapMutations(['changePanel']),
+
             upload(e) {
                 if (!this.file) {
                     this.attention = '请选择文件'
@@ -45,7 +51,7 @@
                     }
                 }, false)
                 request.onload = (e) => {
-                    if(request.status == 200){
+                    if(request.status == 200) {
                         this.attention = "上传成功"
                     } else {
                         this.attention = "上传失败"
@@ -59,7 +65,7 @@
                 let size = Math.floor(this.file.size / 1024);
                 if (size > 1024) {
                     this.attention = '文件不能大于1MB'
-                    return false
+                    return 
                 }
 
                  if (!this.file || !window.FileReader) return
@@ -131,7 +137,7 @@
         cursor: pointer;
     }
 
-    .user .close {
+    .close {
         position: absolute;
         top: 20px;
         right: 50px;

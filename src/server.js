@@ -74,7 +74,7 @@ function init(socket) {
         })
     })
 
-    if (!socket.admin) return
+    if (!socket.isAdmin) return
 
     events.admin.forEach((event) => {
         socket.on(event, (data) => {

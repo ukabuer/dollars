@@ -3,7 +3,7 @@
         <h2>Channels</h2>
         <span v-if="user.isAdmin" @click="addChannel" class="add">+</span>
         <ul class="channels target">
-            <li v-for="channel in channels" @click="changeTarget('channels', channel.name)" :class="channel.joined ? 'joined' : ''">
+            <li v-for="channel of channels" @click="changeTarget({at: 'channels', target: channel.name})" :class="channel.joined ? 'joined' : ''">
                 #{{ channel.name }}
                 <span v-if="channel.newMsg > 0">{{ channel.newMsg > 99 ? '99+' : channel.newMsg }}</span>
             </li>
@@ -18,12 +18,12 @@
         </ul>
 
         <div class="profile">
-            <div class="avatar" @click="switchPanel('user')">
+            <div class="avatar" @click="changePanel('user')">
                 <img v-if="user.avatar" :src="user.avatar">
             </div>
-            <div class="panel">
+            <div class="control">
                 <p>{{ user.name }}</p>
-                <button @click="switchPanel('user')">设置</button>
+                <button @click="changePanel('user')">设置</button>
                 <button @click="logout">登出</button>
             </div>
         </div>
@@ -31,8 +31,15 @@
 </template>
 
 <script>
+    import {mapState, mapMutations} from 'vuex'
+
     export default {
-        props: ['channels', 'users', 'user', 'changeTarget', 'switchPanel'],
+        computed: mapState({
+            channels: state => state.channels,
+            users: state => state.users,
+            user: state => state.user,
+        }),
+
         methods: {
             addChannel() {
                let channel = window.prompt('name')
@@ -42,7 +49,11 @@
             logout() {
                 window.localStorage.token = undefined
                 socket.emit('logout')
-            }
+            },
+            
+            ...mapMutations([
+                'changePanel', 'changeTarget'
+            ]),
         }
     }
 </script>
@@ -123,12 +134,12 @@
         margin: 0;
     }
 
-    .profile .panel {
+    .profile .control {
         display: inline-block;
         margin-left: 10px;
     }
 
-    .profile .panel::before {
+    .profile .control::before {
         content: " ";
         clear: both;
         height: 0;
@@ -136,7 +147,7 @@
         visibility: hidden;
     }
 
-    .profile .panel p {
+    .profile .control p {
         margin: 0;
         margin-bottom: 10px;
     }

@@ -25,6 +25,8 @@
 </template>
 
 <script>
+    import {mapState} from 'vuex'
+
     export default {
         data() {
             return {
@@ -35,7 +37,9 @@
             }
         },
 
-        props: ['hasInit', 'attention'],
+        computed: mapState({
+           attention: state => state.attention
+        }),
         
         methods: {
             submitAuth() {
@@ -72,22 +76,11 @@
             },
 
             switchAuthMode() {
-                this.attention = this.username = this.password = this.passwordAgain = null
+                this.username = this.password = this.passwordAgain = null
+                this.$store.commit('attention', null)
                 this.loginMode = !this.loginMode
             },
         },
-
-        created() {
-            if (this.hasInit) return
-
-            socket.on('signup failed', (info) => {
-                this.attention = info
-            })
-
-            socket.on('login failed', (info) => {
-                this.attention = info
-            })
-        }
     }
 </script>
 

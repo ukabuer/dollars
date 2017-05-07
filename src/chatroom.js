@@ -38,7 +38,7 @@ if (!fs.existsSync(`./data/public/images`)) fs.mkdirSync(`./data/public/images`)
 
 users.forEach((user) => {
     let newUser = User.from(user)
-    if (config.admins.indexOf(newUser.name) != -1) newUser.admin = true
+    if (config.admins.indexOf(newUser.name) != -1) newUser.isAdmin = true
     chatroom.users.set(user.name, newUser)
     chatroom.tunnels.set(user.name, new Map())
 })
@@ -99,7 +99,7 @@ function saveUsers() {
 }
 
 function login(user, socket) {
-    if (user.admin) socket.admin = true
+    if (user.isAdmin) socket.isAdmin = true
     user.socket = socket.id
     socket.color = colors[Math.floor(Math.random() * colors.length)]
     socket.username = user.name
@@ -109,7 +109,7 @@ function login(user, socket) {
     let data = {
         user: {
             name: user.name,
-            isAdmin: user.admin,
+            isAdmin: user.isAdmin,
             avatar: user.avatar
         },
         token: token,
@@ -144,7 +144,12 @@ function login(user, socket) {
         }
     })
     socket.emit('login succeed', data)
-    socket.to(chatroom.default).emit('login', user.name)
+    socket.to(chatroom.default).emit('updateUser', {
+        name: user.name, 
+        isAdmin: user.isAdmin,
+        online: user.socket != null,
+        avatar: user.avatar
+    })
 }
 
 module.exports = chatroom
