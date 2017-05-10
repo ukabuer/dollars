@@ -22,6 +22,11 @@ let chatroom = {
     backup
 }
 
+if (process.env.s3AccessKeyId) {
+    chatroom.s3AccessKeyId = process.env.s3AccessKeyId
+    chatroom.s3SecretAccessKey = process.env.s3SecretAccessKey
+}
+
 const s3 = new aws.S3({
     accessKeyId: chatroom.s3AccessKeyId,
     secretAccessKey: chatroom.s3SecretAccessKey,
