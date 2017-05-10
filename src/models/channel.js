@@ -60,7 +60,7 @@ class Channel {
     }
 
     getUserList(socket) {
-        socket.emit('channelUsers', this.usernames)
+        socket.emit('getUsers', this.usernames)
     }
 
     writeToFile() {

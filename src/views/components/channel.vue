@@ -2,7 +2,7 @@
     <div class="channel">
         <h2>{{ target }}</h2>
         <ul class="users">
-            <li v-for="user in channelUsers">
+            <li v-for="user in channelUsers" :class="users[user].online ? 'online' : ''">
                 {{ user }}
             </li>
         </ul>
@@ -14,26 +14,15 @@
     import {mapState, mapMutations} from 'vuex'
 
     export default {
-        data() {
-            return { channelUsers: [] }
-        },
-
         computed: mapState({
-            hasInit: state => state.hasInit,
             target: state => state.target,
+            channelUsers: state => state.channelUsers,
+            users: state => state.users,
         }),
 
         methods: {
             ...mapMutations(['changePanel']),
         },
-
-        created() {
-            if (hasInit) return 
-
-            socket.on('getUsers', (channelUsers) => {
-                this.channelUsers = channelUsers
-            })
-        }
     }
 </script>
 
@@ -43,7 +32,13 @@
     }
     
     .channel ul {
-        margin: 20% auto;
+        margin: 20px auto;
+        padding: 0;
         width: 200px;
+    }
+
+    .channel ul li {
+        display: block;
+        margin: 10px;
     }
 </style>

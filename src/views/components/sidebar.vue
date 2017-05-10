@@ -11,7 +11,7 @@
 
         <h2>Users</h2>
         <ul class="users target">
-            <li v-for="item in users" v-if="item.name != user.name" :class="item.online ? 'online' : ''" @click="changeTarget('users', item.name)">
+            <li v-for="item in users" v-if="item.name != user.name" :class="item.online ? 'online' : ''" @click="changeTarget({at:'users', target: item.name})">
                 {{ item.name }}
                 <span v-if="item.newMsg > 0">{{ item.newMsg > 99 ? '99+' : item.newMsg}}</span>
             </li>
@@ -47,7 +47,7 @@
             },
 
             logout() {
-                window.localStorage.token = undefined
+                window.localStorage.token = null
                 socket.emit('logout')
             },
             

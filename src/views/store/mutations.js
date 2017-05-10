@@ -133,5 +133,13 @@ export default {
     exit(state, info) {
         state.login = false
         state.attention = info
+    },
+
+    attention(state, info) {
+        state.attention = info
+    },
+
+    getUsers(state, users) {
+        state.channelUsers = users
     }
 }

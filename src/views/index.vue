@@ -32,7 +32,7 @@
             init(socket) {
                 if (this.hasInit) return
 
-                ['message', 'updateUser', 'join', 'addChannel', 'exit'].forEach((event) => {
+                ['message', 'updateUser', 'join', 'addChannel', 'exit', 'getUsers'].forEach((event) => {
                     socket.on(event, (data) => {
                         this.$store.commit(event, data)
                     })

@@ -20,6 +20,7 @@ const state = {
     login: false,
     hasInit: false,
     attention: null,
+    channelUsers: [],
 }
 
 export default new Vuex.Store({
