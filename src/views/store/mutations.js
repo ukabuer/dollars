@@ -8,7 +8,7 @@ function message(state, message) {
 
     if (state.panel != 'chat' || state.target != target) {
         if (state[at][target].newMsg === undefined) {
-            state[at][target].newMsg = 0
+            state[at][target] = { ...state[at][target], newMsg: 1 }
         } else {
             state[at][target].newMsg++
         }
@@ -65,11 +65,12 @@ export default {
             }
         })
 
+        for (let user in data.offlineMsgs) {
+            data.users[user].newMsg = data.offlineMsgs[user]
+        }
+
         state.channels = channels
         state.users = data.users
-        for (let user in data.offlineMsgs) {
-            state.users[user].newMsg = data.offlineMsgs[user]
-        }
     },
 
     changePanel,
