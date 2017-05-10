@@ -2,3 +2,4 @@ node_modules
 bundle.js
 yarn.lock
 data
+config.json

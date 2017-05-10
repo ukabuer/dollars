@@ -42,8 +42,7 @@
                 let form = new FormData()
                 form.append('avatar', this.file)
                 let request = new XMLHttpRequest()
-                request.open("POST", "/avatar")
-                request.setRequestHeader('Authorization', 'Bearer ' + window.localStorage.token)
+                request.open("POST", "./api/index.php/avatars?token="+window.localStorage.token)
                 request.upload.addEventListener("progress", (e) => {
                     if (e.lengthComputable) {
                         var percentComplete = Math.round(e.loaded * 100 / e.total)
@@ -55,6 +54,11 @@
                         this.attention = "上传成功"
                     } else {
                         this.attention = "上传失败"
+                    }
+                }
+                request.onreadystatechange = () => {
+                    if(request.readyState === XMLHttpRequest.DONE && request.status === 200) {
+                        socket.emit('uploaded', request.responseText)
                     }
                 }
                 request.send(form)

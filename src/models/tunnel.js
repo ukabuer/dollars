@@ -1,4 +1,10 @@
-const fs = require('fs')
+const aws = require('aws-sdk')
+const config = require('../../config.json')
+
+const s3 = new aws.S3({
+    accessKeyId: config.s3AccessKeyId,
+    secretAccessKey: config.s3SecretAccessKey,
+})
 
 const MAXMSG = 100
 
@@ -45,10 +51,12 @@ class Tunnel {
             this.lastFile = filename
         }
 
-        fs.writeFile(`./data/users/${this.begin}/${this.end}/${filename}`, JSON.stringify(data), (err) => {
-            if (err) {
-                console.log(err)
-            }
+        s3.upload({
+            Bucket: 'moeone-dollars', 
+            Key: `data/users/${this.begin}/${this.end}/${filename}`, 
+            Body: JSON.stringify(data)
+        }, function(err, data) {
+            if (err) console.log(err)
         })
     }
 }

@@ -1,5 +1,11 @@
-const fs = require('fs')
+const aws = require('aws-sdk')
 const Message = require('./message')
+const config = require('../../config.json')
+
+const s3 = new aws.S3({
+    accessKeyId: config.s3AccessKeyId,
+    secretAccessKey: config.s3SecretAccessKey,
+})
 
 const MAXMSG = 100
 
@@ -78,10 +84,12 @@ class Channel {
             this.lastFile = filename
         }
 
-        fs.writeFile(`./data/channels/${this.name}/${filename}`, JSON.stringify(data), (err) => {
-            if (err) {
-                console.log(err)
-            }
+        s3.upload({
+            Bucket: 'moeone-dollars',
+            Key: `data/channels/${this.name}/${filename}`,
+            Body: JSON.stringify(data)
+        }, function(err, data) {
+            if (err) console.log(err)
         })
     }
 

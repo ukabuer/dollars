@@ -11,6 +11,7 @@
     "start": "node ./src/server"
   },
   "dependencies": {
+    "aws-sdk": "^2.49.0",
     "koa": "^2.2.0",
     "koa-body": "^2.0.1",
     "koa-jwt": "^3.2.1",

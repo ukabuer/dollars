@@ -1,5 +1,6 @@
 const fs = require('fs')
 const jwt = require('jsonwebtoken')
+const aws = require('aws-sdk')
 const User = require('./models/user')
 const Channel = require('./models/channel')
 const config = require('../config.json')
@@ -13,51 +14,62 @@ let chatroom = {
     users: new Map(),
     channels: new Map(),
     tunnels: new Map(),
+    s3AccessKeyId: config.s3AccessKeyId,
+    s3SecretAccessKey: config.s3SecretAccessKey,
 
     login,
     saveUsers,
     backup
 }
 
+const s3 = new aws.S3({
+    accessKeyId: chatroom.s3AccessKeyId,
+    secretAccessKey: chatroom.s3SecretAccessKey,
+})
+
 let users = [], channels = [new Channel(chatroom.default)]
 
 const colors = ['cornflowerblue', 'tan', 'brown', 'firebrick', 'sienna', 'deepskyblue', 'cadetblue', 'blueviolet', 'hotpink', 'darkcyan', 'darkorange']
 
 try {
-    users = require('../data/users.json')
-    channels = require('../data/channels.json')
-} catch (e) { }
+    var params = { Bucket: 'moeone-dollars', Key: 'data/users.json' }
+    s3.getObject(params, function (err, data) {
+        if (err) {
+            console.log(err)
+        } else {
+            users = JSON.parse(data.Body)
+        }
+        users.forEach((user) => {
+            let newUser = User.from(user)
+            if (config.admins.indexOf(newUser.name) != -1) newUser.isAdmin = true
+            chatroom.users.set(user.name, newUser)
+            chatroom.tunnels.set(user.name, new Map())
+        })
+    })
+
+    params = { Bucket: 'moeone-dollars', Key: 'data/channels.json' }
+    s3.getObject(params, function (err, data) {
+        if (err) {
+            console.log(err)            
+        } else {
+            channels = JSON.parse(data.Body)
+        }
+        channels.forEach((channel) => {
+            let messages = [], lastFile = null
+            s3.getObject({ Bucket: 'moeone-dollars', Key: `data/channels/${channel.name}/tmp.json` }, function (err, data) {
+                if (err) {}
+                else {
+                    let tmp = JSON.stringify(data)
+                    messages = tmp.messages
+                    lastFile = tmp.lastFile
+                }
+                chatroom.channels.set(channel.name, Channel.from(channel, lastFile, messages))
+            })
+        })
+    })
+} catch (e) { console.log(e) }
 
 if (!chatroom.public) chatroom.allowUsers = chatroom.admins
-if (!fs.existsSync('./data')) fs.mkdirSync('./data')
-if (!fs.existsSync(`./data/users`)) fs.mkdirSync(`./data/users`)
-if (!fs.existsSync(`./data/channels`)) fs.mkdirSync(`./data/channels`)
-if (!fs.existsSync(`./data/public`)) fs.mkdirSync(`./data/public`)
-if (!fs.existsSync(`./data/public/avatars`)) fs.mkdirSync(`./data/public/avatars`)
-if (!fs.existsSync(`./data/public/images`)) fs.mkdirSync(`./data/public/images`)
-
-users.forEach((user) => {
-    let newUser = User.from(user)
-    if (config.admins.indexOf(newUser.name) != -1) newUser.isAdmin = true
-    chatroom.users.set(user.name, newUser)
-    chatroom.tunnels.set(user.name, new Map())
-})
-
-channels.forEach((channel) => {
-    let messages = [], lastFile = null
-    if (!fs.existsSync(`./data/channels/${channel.name}`)) {
-        fs.mkdirSync(`./data/channels/${channel.name}`)
-    }
-    if (fs.existsSync(`./data/channels/${channel.name}/tmp.json`)) {
-        try {
-            let tmp = require(`../data/channels/${channel.name}/tmp.json`)
-            messages = tmp.messages
-            lastFile = tmp.lastFile
-        } catch (e) { }
-    }
-    chatroom.channels.set(channel.name, Channel.from(channel, lastFile, messages))
-})
-
 
 function backup() {
     let channelsData = [], usersData = []
@@ -73,6 +85,7 @@ function backup() {
     chatroom.users.forEach((user) => {
         user = User.from(user)
         delete user.socket
+        delete user.offlineMsgs
         usersData.push(user)
     })
     chatroom.tunnels.forEach((middle) => {
@@ -81,8 +94,21 @@ function backup() {
         })
     })
 
-    fs.writeFile('./data/channels.json', JSON.stringify(channelsData), () => { })
-    fs.writeFile('./data/users.json', JSON.stringify(usersData), () => { })
+    s3.upload({
+        Bucket: 'moeone-dollars',
+        Key: 'data/channels.json',
+        Body: JSON.stringify(channelsData)
+    }, function (err, data) {
+        if (err) console.log(err)
+    })
+
+    s3.upload({
+        Bucket: 'moeone-dollars',
+        Key: 'data/users.json',
+        Body: JSON.stringify(usersData)
+    }, function (err, data) {
+        if (err) console.log(err)
+    })
 }
 
 function saveUsers() {
@@ -92,8 +118,11 @@ function saveUsers() {
         delete user.socket
         data.push(user)
     })
-
-    fs.writeFile(`./data/users.json`, JSON.stringify(data), (err) => {
+    s3.upload({
+        Bucket: 'moeone-dollars',
+        Key: 'data/users.json',
+        Body: JSON.stringify(data)
+    }, function (err, data) {
         if (err) console.log(err)
     })
 }
@@ -105,7 +134,7 @@ function login(user, socket) {
     socket.username = user.name
 
     /* send user the chatroom info */
-    let token = jwt.sign({name: user.name}, chatroom.secret)
+    let token = jwt.sign({ name: user.name }, chatroom.secret)
     let data = {
         user: {
             name: user.name,
@@ -145,7 +174,7 @@ function login(user, socket) {
     })
     socket.emit('login succeed', data)
     socket.to(chatroom.default).emit('updateUser', {
-        name: user.name, 
+        name: user.name,
         isAdmin: user.isAdmin,
         online: user.socket != null,
         avatar: user.avatar
