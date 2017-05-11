@@ -64,7 +64,7 @@ try {
             s3.getObject({ Bucket: 'moeone-dollars', Key: `data/channels/${channel.name}/tmp.json` }, function (err, data) {
                 if (err) {}
                 else {
-                    let tmp = JSON.stringify(data)
+                    let tmp = JSON.parse(data.Body)
                     messages = tmp.messages
                     lastFile = tmp.lastFile
                 }

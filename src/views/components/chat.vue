@@ -44,7 +44,7 @@
         }),
 
         methods: {
-            ...mapMutations(['changePanel']),
+            ...mapMutations(['changePanel', 'leave']),
 
             getChannelUsers() {
                 socket.emit('getUsers', this.target)

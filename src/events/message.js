@@ -7,7 +7,7 @@ function message(data, socket, io) {
     if (msg.at == 'channels') {
         let user = chatroom.users.get(socket.username)
         if (!user && user.joined.indexOf(msg.to) == -1) return
-        
+
         chatroom.channels.get(msg.to).addMessage(msg, socket, io)
     } else if (msg.at == 'users') {
         let begin, end
@@ -19,28 +19,26 @@ function message(data, socket, io) {
 
         if (undefined == tunnel.get(end)) {
             let messages = [], lastFile = null
-            try {
-                if (!fs.existsSync(`./data/users/${begin}/${end}`)) {
-                    fs.mkdirSync(`./data/users/${begin}/${end}`)
+            s3.getObject({ Bucket: 'moeone-dollars', Key: `data/users/${begin}/${end}/tmp.json` }, function (err, data) {
+                if (err) { }
+                else {
+                    let tmp = JSON.parse(data.Body)
+                    messages = tmp.messages
+                    lastFile = tmp.lastFile
                 }
-                let msgFile = require(`../data/users/${begin}/${end}/tmp.json`)
-                messages = msgFile.messages
-                lastFile = msgFile.lastFile
-            } catch (e) { }
+                tunnel.set(end, new Tunnel(begin, end, lastFile, messages))
+                let target = chatroom.users.get(msg.to)
+                tunnel.get(end).addMessage(msg, socket, target.socket)
 
-            tunnel.set(end, new Tunnel(begin, end, lastFile, messages))
-        }
-
-        let target = chatroom.users.get(msg.to)
-        tunnel.get(end).addMessage(msg, socket, target.socket)
-
-        if (null == target.socket) {
-            let offMsgs = target.offlineMsgs[msg.from]
-            if (undefined == offMsgs) {
-                target.offlineMsgs[msg.from] = 1
-            } else {
-                target.offlineMsgs[msg.from] = offMsgs + 1
-            }
+                if (null == target.socket) {
+                    let offMsgs = target.offlineMsgs[msg.from]
+                    if (undefined == offMsgs) {
+                        target.offlineMsgs[msg.from] = 1
+                    } else {
+                        target.offlineMsgs[msg.from] = offMsgs + 1
+                    }
+                }
+            })
         }
     }
 }
