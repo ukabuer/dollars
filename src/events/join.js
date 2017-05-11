@@ -5,7 +5,7 @@ function join(channelName, socket, io) {
     let channel = chatroom.channels.get(channelName)
     if (!user || !channel) return
 
-    user.joined.push(channel)
+    user.joined.push(channelName)
     channel.addUser(user.name, socket, io)
 }
 
