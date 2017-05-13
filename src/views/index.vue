@@ -1,5 +1,5 @@
 <template>
-    <div class="container">
+    <div class="page">
         <load-page class="welcome" v-if="wait"></load-page>
 
         <welcome-page class="welcome" v-else-if="!login"></welcome-page>
@@ -57,7 +57,7 @@
             })
 
             socket.on('login failed', (info) => {
-                if (this.wait) this.wait = false
+                if (this.wait) setTimeout(() => this.wait = false, 500)
                 this.$store.commit('attention', info)
             })
 
@@ -69,20 +69,23 @@
 </script>
 
 <style>
-    * {
-        box-sizing: border-box;
-    }
-    
     html,
     body {
         height: 100%;
         margin: 0;
         padding: 0;
-    }
-    
-    .container {
-        height: 100%;
         background-color: #0a0a0a;
         color: #fff;
+    }
+    
+    .page {
+        height: 100%;
+    }
+
+    .welcome {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translateX(-50%) translateY(-50%);
     }
 </style>

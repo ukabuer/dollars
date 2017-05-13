@@ -1,17 +1,17 @@
 <template>
     <div class="sidebar">
-        <h2>Channels</h2>
+        <h3>Channels</h3>
         <span v-if="user.isAdmin" @click="addChannel" class="add">+</span>
         <ul class="channels target">
-            <li v-for="channel of channels" @click="changeTarget({at: 'channels', target: channel.name})" :class="channel.joined ? 'joined' : ''">
+            <li v-for="channel of channels" @click="changeTarget({at: 'channels', target: channel.name})" :class="{joined: channel.joined, current: target == channel.name}">
                 #{{ channel.name }}
-                <span v-if="channel.newMsg > 0">{{ channel.newMsg > 99 ? '99+' : channel.newMsg }}</span>
+                <span v-if="channel.newMsg > 0">{{ channel.newMsg > 99 ? '99+' : channel.newMsg}}</span>
             </li>
         </ul>
 
-        <h2>Users</h2>
+        <h3>Users</h3>
         <ul class="users target">
-            <li v-for="item in users" v-if="item.name != user.name" :class="item.online ? 'online' : ''" @click="changeTarget({at:'users', target: item.name})">
+            <li v-for="item in users" v-if="item.name != user.name" :class="{online: item.online, current: target == item.name}" @click="changeTarget({at:'users', target: item.name})">
                 {{ item.name }}
                 <span v-if="item.newMsg > 0">{{ item.newMsg > 99 ? '99+' : item.newMsg}}</span>
             </li>
@@ -23,8 +23,8 @@
             </div>
             <div class="control">
                 <p>{{ user.name }}</p>
-                <button @click="changePanel('user')">设置</button>
-                <button @click="logout">登出</button>
+                <button class="btn btn-sm" @click="changePanel('user')">设置</button>
+                <button class="btn btn-sm" @click="logout">登出</button>
             </div>
         </div>
     </div>
@@ -38,6 +38,7 @@
             channels: state => state.channels,
             users: state => state.users,
             user: state => state.user,
+            target: state => state.target,
         }),
 
         methods: {
@@ -63,24 +64,39 @@
         position: absolute;
         width: 200px;
         height: 100%;
-        padding-left: 20px;
+        padding: 10px 20px 10px 20px;
+        background-color: #212121;
+        min-height: 500px;
+        overflow-y: auto;
+        z-index: 1000;
+        transition: left 0.3s ease-out;
     }
 
     .sidebar .add {
         position: absolute;
         right: 20px;
-        top: 20px;
+        top: 10px;
         font-size: 24px;
         cursor: pointer;
     }
 
+    .sidebar h3 {
+        margin-bottom: 10px;
+        border-bottom: 1px solid #fff;
+    }
+
     .sidebar ul {
-        height: 30%;
+        margin: 0;
+        height: 20%;
         overflow-y: auto;
     }
 
+    .sidebar ul.users {
+        height: 40%;
+    }
+
     .channels {
-        color: #bbb;
+        color: #aaa;
     }
     
     .channels .joined {
@@ -88,33 +104,23 @@
     }
     
     .target {
-        padding: 0;
+        padding: 5px;
     }
 
     .target li {
         display: block;
-        margin: 10px;
+        padding: 6px 10px;
+        margin: 2px 0;
         line-height: 15px;
-        height: 20px;
-    }
-
-    .users li::before {
-        display: inline-block;
-        content: "";
-        width: 8px;
-        height: 8px;
-        background-color: gray;
-        border-radius: 100%
-    }
-
-    .users li.online::before {
-        background-color: yellowgreen;
-    }
-    
-    .target li:hover {
         cursor: pointer;
+        transition: all .3s ease;
     }
-    
+
+    .target li:hover, .target li.current {
+        background-color: #424242;
+        transition: all .3s ease;
+    }
+
     .target li span {
         display: inline-block;
         width: 25px;
@@ -125,9 +131,22 @@
         background-color: orangered;
     }
 
+    .users li::before {
+        display: inline-block;
+        content: "";
+        width: 8px;
+        height: 8px;
+        background-color: #ccc;
+        border-radius: 100%
+    }
+
+    .users li.online::before {
+        background-color: yellowgreen;
+    }
+
     .profile {
         position: absolute;
-        bottom: 40px;
+        bottom: 10px;
     }
     
     .profile .avatar {
@@ -149,6 +168,10 @@
 
     .profile .control p {
         margin: 0;
-        margin-bottom: 10px;
+        margin-bottom: 5px;
+    }
+
+    .profile .control button {
+        margin-right: 10px;
     }
 </style>

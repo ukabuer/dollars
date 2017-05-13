@@ -1,23 +1,24 @@
 <template>
-    <div class="container">
-        <div class="chat">
-            <h1>{{ target }}</h1>
+    <div>
+        <div class="chat-header">
+            <h3>{{ target }}</h3>
             <div class="control" v-if="at == 'channels'">
                 <span @click="getChannelUsers">频道成员</span>
                 <span v-if="target != 'default'" @click="leave">离开频道</span>
             </div>
-            <div class="messages" id="messages">
-                <div v-for="msg in messages" :class="msg.from == username ? 'self' :''">
-                    <div v-if="!msg.system" class="avatar">
-                        <img v-if="users[msg.from].avatar" :src="users[msg.from].avatar">
+        </div>
+
+        <div class="messages" id="messages">
+            <div v-for="msg in messages" :class="msg.from == username ? 'self' :''">
+                <div v-if="!msg.system" class="avatar">
+                    <img v-if="users[msg.from].avatar" :src="users[msg.from].avatar">
+                </div>
+                <div :class="'content' + (msg.system ? ' system' : '')">
+                    <div class="meta">
+                        <span v-if="!msg.system">{{ msg.from }}</span>
+                        <span class="time">{{ displayTime(msg.time) }}</span>
                     </div>
-                    <div :class="'content' + (msg.system ? ' system' : '')">
-                        <div class="meta">
-                            <span v-if="!msg.system">{{ msg.from }}</span>
-                            <span class="time">{{ displayTime(msg.time) }}</span>
-                        </div>
-                        <p :style="msg.system ? '' :'background-color:'+msg.color">{{ msg.content }}</p>
-                    </div>
+                    <p :style="msg.system ? '' :'background-color:'+msg.color">{{ msg.content }}</p>
                 </div>
             </div>
         </div>
@@ -27,9 +28,9 @@
 </template>
 
 <script>
-    import {mapState, mapMutations, mapGetters} from 'vuex'
+    import { mapState, mapMutations, mapGetters } from 'vuex'
     import inputBar from './input-bar.vue'
-    
+
     export default {
         components: {
             inputBar
@@ -44,7 +45,7 @@
         }),
 
         methods: {
-            ...mapMutations(['changePanel']),
+            ...mapMutations(['changePanel', 'leave']),
 
             getChannelUsers() {
                 socket.emit('getUsers', this.target)
@@ -55,10 +56,10 @@
                 let date = new Date(time)
                 let today = new Date()
                 let basic = date.toTimeString().substr(0, 8)
-                
+
                 if (today.getDate() == date.getDate()) return basic
 
-                basic = (date.getMonth()+1) + '/' + date.getDate() + ' ' + basic
+                basic = (date.getMonth() + 1) + '/' + date.getDate() + ' ' + basic
                 if (today.getFullYear() == date.getFullYear()) return basic
 
                 return date.getFullYear() + '/' + basic
@@ -82,15 +83,61 @@
             this.scrollToBottom()
         }
     }
+
 </script>
 
 <style>
-    .time {
-        font-size: 12px;
-        color: #ddd;
-        margin: 0 5px;
+    .chat-header {
+        height: 50px;
     }
-    
+
+    .chat-header h3 {
+        margin: 0;
+        margin-bottom: 1rem;
+        text-align: center;
+        line-height: 50px
+    }
+
+    .chat-header .control {
+        position: absolute;
+        top: 25px;
+        right: 10px;
+        color: #ccc;
+    }
+
+    .chat-header .control span {
+        margin-right: 10px;
+        cursor: pointer;
+        transition: color .5s ease;
+    }
+
+    .chat-header .control span:hover {
+        color: #fff;
+        transition: color .3s ease;
+    }
+
+    .messages {
+        position: absolute;
+        width: 100%;
+        top: 50px;
+        bottom: 80px;
+        padding-top: 10px;
+        border-top: 1px solid #333;
+        overflow-y: auto;
+    }
+
+    .messages > div {
+        margin-bottom: 10px;
+    }
+
+    .messages .self .avatar {
+        float: right;
+    }
+
+    .messages .self .content {
+        text-align: right;
+    }
+
     .avatar {
         position: relative;
         float: left;
@@ -101,7 +148,13 @@
         border-radius: 100%;
         margin: 0 20px;
     }
-    
+
+    .time {
+        font-size: 12px;
+        color: #ddd;
+        margin: 0 5px;
+    }
+
     .content p {
         display: inline-block;
         max-width: 50%;
@@ -115,17 +168,17 @@
         text-align: left;
         color: #eee;
     }
-    
+
     .content.system {
         height: 20px;
         line-height: 20px;
         text-align: center;
     }
-    
+
     .content.system .meta {
         display: inline;
     }
-    
+
     .content.system p {
         display: inline;
         padding: 0;
@@ -133,47 +186,5 @@
         font-size: 12px;
         color: #ddd;
         background-color: initial;
-    }
-    
-    .chat {
-        position: absolute;
-        padding-top: 110px;
-        width: 100%;
-        height: 100%;
-        bottom: 100px;
-    }
-    
-    .chat h1 {
-        margin: 0;
-    }
-    
-    .messages {
-        height: 100%;
-        padding-top: 10px;
-        border-top: 1px solid #333;
-        overflow-y: auto;
-    }
-    
-    .messages>div {
-        margin-bottom: 10px;
-    }
-    
-    .messages .self .avatar {
-        float: right;
-    }
-    
-    .messages .self .content {
-        text-align: right;
-    }
-
-    .chat .control {
-        position: absolute;
-        top: 120px;
-        right: 50px;
-    }
-
-    .chat .control span {
-        margin-right: 10px;
-        cursor: pointer;
     }
 </style>

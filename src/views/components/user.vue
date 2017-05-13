@@ -8,7 +8,7 @@
             </div>
             <p>{{ user.name }}的头像</p>
             <input id="avatar" type="file" @change="choose">
-            <button @click="upload">上传</button>
+            <button class="btn" @click="upload">上传</button>
             <p v-if="attention">{{ attention }}</p>
         </div>
         <span class="close" @click="changePanel('chat')">X</span>
