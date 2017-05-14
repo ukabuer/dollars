@@ -1,13 +1,15 @@
 <template>
     <form class="input" @submit.prevent="send">
         <div class="function">
+            <!--
             <button class="btn btn-link">颜文字</button>
             <button class="btn btn-link">图片</button>
             <button class="btn btn-link">语音</button>
             <button class="btn btn-link">文件</button>
+            -->
             <span>Shift + Enter发送消息</span>
         </div>
-        <textarea v-model="input" @keyup.enter.prevent="send" autocomplete="off"></textarea>
+        <textarea v-model="input" @keydown.enter="shortcut" autocomplete="off"></textarea>
         <button class="btn btn-primary" id="submit">Post!</button>
     </form>
 </template>
@@ -35,12 +37,10 @@
             },
 
             shortcut(e) {
-                let keyCode = e.keyCode || e.which || e.charCode
-                let ctrlKey = e.ctrlKey || e.metaKey
-                if(ctrlKey && keyCode == 83) {
+                if(e.shiftKey) {
                     this.send()
+                    e.preventDefault()
                 }
-                e.preventDefault()
             }
         }
     }
@@ -80,6 +80,10 @@
         color: #fff;
         width: 60px;
         margin: 0 0px;
+    }
+
+    .input .function button:focus {
+        color: #fff;
     }
 
     .input .function button:hover {

@@ -91,12 +91,13 @@
         height: 300px;
         width: 300px;
         text-align: center;
-        line-height: 50px;
     }
+
     .upload input {
         position: absolute;
         left: -9999px;
     }
+
     .upload label {
         position: absolute;
         top: 0;
@@ -105,6 +106,11 @@
         bottom: 0;
         z-index: 10;
         cursor: pointer;
+    }
+
+    .upload p {
+        margin-top: 10px;
+        line-height: 50px;
     }
 
     .upload .avatar {

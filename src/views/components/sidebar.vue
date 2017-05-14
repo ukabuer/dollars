@@ -87,7 +87,7 @@
 
     .sidebar ul {
         margin: 0;
-        height: 20%;
+        height: 30%;
         overflow-y: auto;
     }
 

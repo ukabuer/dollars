@@ -79,7 +79,7 @@ export default {
 
     addChannel(state, channel) {
         state.channels = {
-            ...state.channel,
+            ...state.channels,
             [channel]: {
                 name: channel,
                 joined: false,

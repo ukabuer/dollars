@@ -167,6 +167,7 @@
         word-wrap: break-word;
         text-align: left;
         color: #eee;
+        white-space: pre;
     }
 
     .content.system {
