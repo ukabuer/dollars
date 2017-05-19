@@ -167,7 +167,7 @@
         word-wrap: break-word;
         text-align: left;
         color: #eee;
-        white-space: pre;
+        white-space: pre-wrap;
     }
 
     .content.system {
@@ -187,5 +187,12 @@
         font-size: 12px;
         color: #ddd;
         background-color: initial;
+    }
+
+    @media (max-width: 600px) {
+        .content p {
+            padding: 5px 15px;
+            font-size: 14px;
+        }
     }
 </style>
